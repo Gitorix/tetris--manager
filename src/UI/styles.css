@@ -4657,3 +4657,284 @@ body:has(.game-panel:not([hidden])) .app-shell {
     min-height: 600px;
   }
 }
+
+@media (max-width: 719px) and (orientation: portrait) {
+  html,
+  body,
+  #app {
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+
+  body:has(.game-panel:not([hidden])) {
+    overflow: hidden;
+  }
+
+  body:has(.game-panel:not([hidden])) .app-shell {
+    align-items: start;
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+    padding:
+      calc(env(safe-area-inset-top) + 8px)
+      8px
+      max(env(safe-area-inset-bottom), 8px);
+  }
+
+  .game-top-actions {
+    top: calc(env(safe-area-inset-top) + 8px);
+    right: 8px;
+    flex-direction: column;
+    width: 38px;
+    gap: 6px;
+  }
+
+  .game-icon-button,
+  .game-exit-button {
+    width: 38px;
+    min-width: 38px;
+    height: 36px;
+    border-radius: 10px;
+    font-size: 12px;
+  }
+
+  .game-panel[data-screen="game"] {
+    grid-template-rows: 92px auto 60px 142px;
+    gap: 6px;
+    width: min(100%, 430px);
+    height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px);
+    min-height: 0;
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px);
+    overflow: hidden;
+  }
+
+  .game-panel[data-screen="game"] .status-grid {
+    grid-row: 1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    height: 92px;
+    min-height: 92px;
+    max-height: 92px;
+    gap: 6px;
+    padding-right: 44px;
+    overflow: hidden;
+  }
+
+  .game-panel[data-screen="game"] .status-item {
+    height: 43px;
+    min-height: 43px;
+    max-height: 43px;
+    gap: 2px;
+    padding: 5px 8px;
+  }
+
+  .game-panel[data-screen="game"] .status-label {
+    font-size: 10px;
+  }
+
+  .game-panel[data-screen="game"] .status-value {
+    font-size: 15px;
+  }
+
+  .game-panel[data-screen="game"] .board-wrap {
+    grid-row: 2;
+    min-height: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .game-panel[data-screen="game"] .board-grid {
+    width: clamp(162px, min(58vw, calc((100dvh - 326px) / 2)), 220px);
+    min-width: 0;
+    max-width: 220px;
+    min-height: 0;
+    height: auto;
+    max-height: calc(100dvh - 326px);
+  }
+
+  .game-panel[data-screen="game"] .dev-status {
+    grid-row: 3;
+    grid-template-columns: 1fr auto;
+    height: 60px;
+    min-height: 60px;
+    max-height: 60px;
+    gap: 4px 8px;
+    padding: 7px 9px;
+    overflow: hidden;
+  }
+
+  .game-panel[data-screen="game"] .supply-status-title {
+    font-size: 11px;
+  }
+
+  .game-panel[data-screen="game"] .supply-status-message {
+    font-size: 13px;
+  }
+
+  .game-panel[data-screen="game"] .communication-status {
+    min-width: 56px;
+    padding: 6px 7px;
+    font-size: 10px;
+  }
+
+  .game-panel[data-screen="game"] .stage-progress,
+  .game-panel[data-screen="game"] .ai-hint-panel,
+  .game-panel[data-screen="game"] .management-feedback,
+  .game-panel[data-screen="game"] .operator-bubble,
+  .game-panel[data-screen="game"] .operator-crew,
+  .game-panel[data-screen="game"] .game-over-text {
+    display: none !important;
+  }
+
+  .game-panel[data-screen="game"] .supply-area {
+    grid-row: 4;
+    grid-template-rows: 42px 28px 58px;
+    align-content: start;
+    height: 142px;
+    min-height: 142px;
+    max-height: 142px;
+    gap: 5px;
+    padding: 6px;
+    overflow: hidden;
+  }
+
+  .game-panel[data-screen="game"] .supply-area .replenishment-status {
+    height: 42px;
+    min-height: 42px;
+    max-height: 42px;
+    gap: 2px;
+    padding: 5px 7px;
+    overflow: hidden;
+  }
+
+  .game-panel[data-screen="game"] .supply-area .replenishment-label,
+  .game-panel[data-screen="game"] .supply-area .replenishment-main,
+  .game-panel[data-screen="game"] .supply-area .replenishment-shipment-name {
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  .game-panel[data-screen="game"] .supply-area .replenishment-detail {
+    display: block;
+    min-height: 12px;
+    max-height: 12px;
+    overflow: hidden;
+  }
+
+  .game-panel[data-screen="game"] .supply-area .replenishment-items {
+    display: flex;
+    gap: 4px;
+    overflow: hidden;
+  }
+
+  .game-panel[data-screen="game"] .supply-area .replenishment-item {
+    display: inline-grid;
+    grid-template-columns: 21px auto;
+    min-width: 38px;
+    min-height: 12px;
+    gap: 2px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .game-panel[data-screen="game"] .supply-area .replenishment-icon {
+    grid-template-columns: repeat(4, 4px);
+    grid-template-rows: repeat(2, 4px);
+    width: 19px;
+    height: 9px;
+  }
+
+  .game-panel[data-screen="game"] .supply-area .replenishment-amount {
+    font-size: 10px;
+  }
+
+  .game-panel[data-screen="game"] .management-skill-panel {
+    height: 28px;
+    min-height: 28px;
+    max-height: 28px;
+    gap: 4px;
+  }
+
+  .game-panel[data-screen="game"] .management-skill-button {
+    min-height: 28px;
+    padding: 3px 2px;
+    font-size: 9px;
+  }
+
+  .game-panel[data-screen="game"] .management-skill-button span {
+    font-size: 9px;
+  }
+
+  .game-panel[data-screen="game"] .supply-buttons {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-auto-rows: 58px;
+    gap: 4px;
+    height: 58px;
+    min-height: 58px;
+    max-height: 58px;
+  }
+
+  .game-panel[data-screen="game"] .supply-button {
+    height: 58px;
+    min-height: 58px;
+    max-height: 58px;
+    grid-template-rows: 36px 14px;
+    gap: 3px;
+    padding: 4px 2px 5px;
+    border-radius: 9px;
+  }
+
+  .game-panel[data-screen="game"] .supply-button::before {
+    transform: scale(0.82);
+    transform-origin: center;
+  }
+
+  .game-panel[data-screen="game"] .supply-button-count {
+    height: 14px;
+    font-size: 11px;
+    line-height: 14px;
+  }
+}
+
+@media (max-width: 360px) and (orientation: portrait) {
+  .game-panel[data-screen="game"] {
+    grid-template-rows: 86px auto 54px 136px;
+  }
+
+  .game-panel[data-screen="game"] .status-grid {
+    height: 86px;
+    min-height: 86px;
+    max-height: 86px;
+    gap: 5px;
+  }
+
+  .game-panel[data-screen="game"] .status-item {
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    padding: 4px 6px;
+  }
+
+  .game-panel[data-screen="game"] .board-grid {
+    width: clamp(150px, min(54vw, calc((100dvh - 306px) / 2)), 200px);
+    max-width: 200px;
+  }
+
+  .game-panel[data-screen="game"] .dev-status {
+    height: 54px;
+    min-height: 54px;
+    max-height: 54px;
+  }
+
+  .game-panel[data-screen="game"] .supply-area {
+    height: 136px;
+    min-height: 136px;
+    max-height: 136px;
+  }
+
+  .game-panel[data-screen="game"] .supply-button {
+    min-width: 0;
+  }
+}
