@@ -415,7 +415,7 @@ app.innerHTML = `
           <span class="safe-ai-comment" data-safe-ai-comment>供給の傾向を見直してみましょう。</span>
           <div class="clear-action-buttons" aria-label="クリア後の操作">
             <button class="clear-restart-button" type="button">もう一度</button>
-            <button class="clear-next-button" type="button" disabled aria-label="次のステージは準備中です">次へ</button>
+            <button class="clear-next-button" type="button">次へ</button>
           </div>
         </section>
         <section class="game-over-panel" data-game-over-panel hidden aria-label="ゲームオーバー">
@@ -533,6 +533,7 @@ const reportRate = document.querySelector<HTMLSpanElement>("[data-report-rate]")
 const reportRank = document.querySelector<HTMLSpanElement>("[data-report-rank]");
 const safeAIComment = document.querySelector<HTMLSpanElement>("[data-safe-ai-comment]");
 const clearRestartButton = document.querySelector<HTMLButtonElement>(".clear-restart-button");
+const clearNextButton = document.querySelector<HTMLButtonElement>(".clear-next-button");
 const gameOverPanel = document.querySelector<HTMLElement>("[data-game-over-panel]");
 const gameOverFinalScore = document.querySelector<HTMLSpanElement>("[data-game-over-final-score]");
 const gameOverFinalManagementPower = document.querySelector<HTMLSpanElement>(
@@ -1034,16 +1035,16 @@ const renderReplenishmentStatus = () => {
   `;
 };
 
-const getAIHintText = () => {
-  if (managementPower >= 90) {
+const getAIHintText = (power = managementPower) => {
+  if (power >= 90) {
     return "かなり明確なヒント：今は盤面を低く整える判断が重要そう。";
   }
 
-  if (managementPower >= 60) {
+  if (power >= 60) {
     return "長いブロックが欲しい気がする…";
   }
 
-  if (managementPower >= 30) {
+  if (power >= 30) {
     return "高く積みすぎるのは避けたい。";
   }
 
@@ -1457,6 +1458,8 @@ const useManagementSkill = (skill: keyof typeof MANAGEMENT_SKILL_COSTS) => {
   }
 
   const cost = MANAGEMENT_SKILL_COSTS[skill];
+  const managementPowerBeforeSpend = managementPower;
+  const aiHintText = skill === "aiHint" ? getAIHintText(managementPowerBeforeSpend) : "";
   if (!spendManagementPower(cost)) {
     renderBoard(snapshot);
     showManagementShortage();
@@ -1466,7 +1469,7 @@ const useManagementSkill = (skill: keyof typeof MANAGEMENT_SKILL_COSTS) => {
   switch (skill) {
     case "aiHint":
       showHintUnlock();
-      setSupplyStatus("💡 AIヒント", getAIHintText(), `管理力 -${cost}`, "thinking");
+      setSupplyStatus("💡 AIヒント", aiHintText, `管理力 -${cost}`, "thinking");
       characterEvents.notify("asuton", "分析しました！", 1800);
       break;
     case "emergencyReplenish":
@@ -1485,7 +1488,7 @@ const useManagementSkill = (skill: keyof typeof MANAGEMENT_SKILL_COSTS) => {
   renderBoard(engine.getSnapshot());
 
   if (skill === "aiHint") {
-    setSupplyStatus("💡 AIヒント", getAIHintText(), `管理力 -${cost}`, "thinking");
+    setSupplyStatus("💡 AIヒント", aiHintText, `管理力 -${cost}`, "thinking");
   } else if (skill === "inventoryAnalysis") {
     setSupplyStatus("📊 在庫分析", getInventoryAnalysisText(), `管理力 -${cost}`, "thinking");
   }
@@ -2405,6 +2408,7 @@ const returnToTitle = (source: string) => {
 };
 
 clearRestartButton?.addEventListener("click", () => startTraining("stageclear-restart"));
+clearNextButton?.addEventListener("click", () => startTraining("stageclear-next"));
 gameOverRestartButton?.addEventListener("click", () => startTraining("gameover-restart"));
 
 document.querySelectorAll<HTMLButtonElement>("[data-action]").forEach((button) => {

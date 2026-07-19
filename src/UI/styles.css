@@ -2294,8 +2294,8 @@ body::before {
   display: block;
   position: relative;
   z-index: 1;
-  width: clamp(76px, 15vw, 150px);
-  height: clamp(76px, 15vw, 150px);
+  width: clamp(61px, 12vw, 120px);
+  height: clamp(61px, 12vw, 120px);
   object-fit: contain;
   filter:
     drop-shadow(0 10px 12px rgba(0, 0, 0, 0.42))
@@ -2497,8 +2497,8 @@ body::before {
   }
 
   .title-character-image {
-    width: clamp(74px, 29vw, 112px);
-    height: clamp(74px, 29vw, 112px);
+    width: clamp(59px, 23vw, 90px);
+    height: clamp(59px, 23vw, 90px);
   }
 
   .title-character figcaption {
@@ -2546,8 +2546,8 @@ body::before {
   }
 
   .title-character-image {
-    width: clamp(58px, 16dvh, 92px);
-    height: clamp(58px, 16dvh, 92px);
+    width: clamp(46px, 13dvh, 74px);
+    height: clamp(46px, 13dvh, 74px);
   }
 
   .title-actions {
