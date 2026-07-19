@@ -412,11 +412,11 @@ app.innerHTML = `
           </div>
           <span class="clear-panel-result" data-final-score>最終スコア 0</span>
           <span class="clear-panel-result" data-report-total>総供給回数 0</span>
-          <span class="safe-ai-comment" data-safe-ai-comment>供給の傾向を見直してみましょう。</span>
           <div class="clear-action-buttons" aria-label="クリア後の操作">
             <button class="clear-restart-button" type="button">もう一度</button>
             <button class="clear-next-button" type="button">次へ</button>
           </div>
+          <span class="safe-ai-comment" data-safe-ai-comment>供給の傾向を見直してみましょう。</span>
         </section>
         <section class="game-over-panel" data-game-over-panel hidden aria-label="ゲームオーバー">
           <span class="game-over-panel-title">研修失敗</span>
@@ -1037,15 +1037,15 @@ const renderReplenishmentStatus = () => {
 
 const getAIHintText = (power = managementPower) => {
   if (power >= 90) {
-    return "かなり明確なヒント：今は盤面を低く整える判断が重要そう。";
+    return "盤面を低く整えよう。";
   }
 
   if (power >= 60) {
-    return "長いブロックが欲しい気がする…";
+    return "長いブロックを活かせそう。";
   }
 
   if (power >= 30) {
-    return "高く積みすぎるのは避けたい。";
+    return "高く積みすぎ注意。";
   }
 
   return "？？？";

@@ -783,13 +783,13 @@ body {
   position: absolute;
   inset: auto 10px 10px;
   display: grid;
-  gap: 6px;
+  gap: 5px;
   justify-items: center;
-  max-height: min(54%, 360px);
+  max-height: min(64%, 430px);
   overflow: hidden;
   width: min(86%, 280px);
   justify-self: center;
-  padding: 10px 12px;
+  padding: 9px 12px;
   border: 1px solid rgba(74, 222, 128, 0.76);
   border-radius: 8px;
   background: rgba(6, 78, 59, 0.82);
@@ -886,14 +886,14 @@ body {
 
 .report-rank {
   color: #bbf7d0;
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 950;
   line-height: 1;
 }
 
 .report-rate {
   color: #f8fafc;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 900;
   line-height: 1.15;
 }
@@ -915,25 +915,25 @@ body {
 .report-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
+  gap: 3px;
   width: 100%;
 }
 
 .report-item {
   min-width: 0;
-  padding: 5px 6px;
+  padding: 4px 5px;
   border: 1px solid rgba(220, 252, 231, 0.24);
   border-radius: 6px;
   background: rgba(6, 95, 70, 0.42);
   color: #ecfdf5;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 850;
   line-height: 1.2;
 }
 
 .safe-ai-comment {
   width: 100%;
-  padding: 6px;
+  padding: 5px 6px;
   border-radius: 6px;
   background: rgba(15, 23, 42, 0.34);
   color: #bbf7d0;
@@ -945,14 +945,14 @@ body {
 .clear-action-buttons {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 7px;
   width: 100%;
 }
 
 .clear-restart-button,
 .clear-next-button,
 .game-over-restart-button {
-  min-height: 30px;
+  min-height: 34px;
   padding: 0 10px;
   border: 1px solid rgba(220, 252, 231, 0.8);
   border-radius: 6px;
@@ -2239,8 +2239,8 @@ body::before {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: end;
   justify-items: center;
-  gap: clamp(6px, 2vw, 22px);
-  width: min(100%, 680px);
+  gap: clamp(4px, 1.4vw, 15px);
+  width: min(92%, 520px);
   margin-top: clamp(0px, 0.8dvh, 8px);
 }
 
@@ -2492,8 +2492,8 @@ body::before {
   }
 
   .title-character-lineup {
-    gap: 2px;
-    width: 100%;
+    gap: 1px;
+    width: min(84%, 320px);
   }
 
   .title-character-image {
@@ -2504,6 +2504,35 @@ body::before {
   .title-character figcaption {
     min-width: 68px;
     padding: 4px 7px;
+  }
+
+  .game-panel[data-screen="game"] .clear-panel {
+    max-height: min(50dvh, 400px);
+    padding: 8px 10px;
+  }
+
+  .game-panel[data-screen="game"] .clear-panel-subtitle {
+    font-size: 10px;
+  }
+
+  .game-panel[data-screen="game"] .report-rank {
+    font-size: 20px;
+  }
+
+  .game-panel[data-screen="game"] .report-rate,
+  .game-panel[data-screen="game"] .report-management,
+  .game-panel[data-screen="game"] .clear-panel-result {
+    font-size: 10px;
+  }
+
+  .game-panel[data-screen="game"] .report-item {
+    padding: 3px 4px;
+    font-size: 8px;
+  }
+
+  .game-panel[data-screen="game"] .safe-ai-comment {
+    font-size: 9px;
+    line-height: 1.2;
   }
 
   .title-tetromino {
@@ -2542,7 +2571,12 @@ body::before {
     grid-column: 2;
     grid-row: 1 / span 2;
     align-self: center;
-    gap: 4px;
+    gap: 3px;
+  }
+
+  .clear-panel {
+    max-height: min(58dvh, 430px);
+    padding: 8px 11px;
   }
 
   .title-character-image {
@@ -3568,6 +3602,22 @@ body:has(.game-panel:not([hidden])) .app-shell {
   box-shadow:
     0 0 32px rgba(134, 239, 172, 0.18),
     0 22px 48px rgba(0, 0, 0, 0.44);
+}
+
+.clear-panel .clear-restart-button,
+.clear-panel .clear-next-button {
+  min-height: 42px;
+  border-color: rgba(103, 232, 249, 0.7);
+  background:
+    linear-gradient(180deg, rgba(34, 211, 238, 0.24), rgba(8, 18, 34, 0.92));
+  color: #f8fafc;
+  text-shadow: 0 0 10px rgba(103, 232, 249, 0.34);
+}
+
+.clear-panel .clear-restart-button {
+  border-color: rgba(134, 239, 172, 0.78);
+  background:
+    linear-gradient(180deg, rgba(134, 239, 172, 0.26), rgba(8, 18, 34, 0.92));
 }
 
 .game-over-panel {
