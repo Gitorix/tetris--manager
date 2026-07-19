@@ -942,7 +942,15 @@ body {
   line-height: 1.35;
 }
 
+.clear-action-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
 .clear-restart-button,
+.clear-next-button,
 .game-over-restart-button {
   min-height: 30px;
   padding: 0 10px;
@@ -953,6 +961,13 @@ body {
   font: inherit;
   font-size: 12px;
   font-weight: 900;
+}
+
+.clear-next-button {
+  border-color: rgba(148, 163, 184, 0.72);
+  background:
+    linear-gradient(180deg, rgba(148, 163, 184, 0.2), rgba(8, 18, 34, 0.92));
+  color: #cbd5e1;
 }
 
 .game-over-panel {
@@ -1829,6 +1844,7 @@ body::before {
 .stage-card,
 .title-return-button,
 .clear-restart-button,
+.clear-next-button,
 .game-over-restart-button,
 .dev-control-button {
   border-color: rgba(103, 232, 249, 0.46);
@@ -1849,6 +1865,7 @@ body::before {
 .title-action-button,
 .title-return-button,
 .clear-restart-button,
+.clear-next-button,
 .game-over-restart-button,
 .dev-control-button {
   min-height: var(--control-min-height);
@@ -1858,6 +1875,7 @@ body::before {
 .stage-card:disabled,
 .title-return-button:disabled,
 .clear-restart-button:disabled,
+.clear-next-button:disabled,
 .game-over-restart-button:disabled,
 .dev-control-button:disabled {
   cursor: not-allowed;
@@ -4844,17 +4862,17 @@ body:has(.game-panel:not([hidden])) .app-shell {
   .game-panel[data-screen="game"] .operator-crew {
     display: grid !important;
     position: absolute;
-    top: 45px;
+    top: 36px;
     right: 10px;
     bottom: auto;
     left: 10px;
-    grid-template-columns: repeat(3, 54px);
+    grid-template-columns: repeat(3, 64px);
     justify-content: center;
     width: auto;
-    height: 74px;
-    min-height: 74px;
-    max-height: 74px;
-    gap: 10px;
+    height: 84px;
+    min-height: 84px;
+    max-height: 84px;
+    gap: 12px;
     margin-right: 0;
     padding: 0;
     border: 0;
@@ -4864,25 +4882,25 @@ body:has(.game-panel:not([hidden])) .app-shell {
   }
 
   .game-panel[data-screen="game"] .operator-agent {
-    width: 54px;
-    height: 74px;
-    min-height: 74px;
-    max-height: 74px;
+    width: 64px;
+    height: 84px;
+    min-height: 84px;
+    max-height: 84px;
     overflow: visible;
   }
 
   .game-panel[data-screen="game"] .operator-image {
-    width: 54px;
-    height: 70px;
+    width: 64px;
+    height: 82px;
     object-fit: contain;
   }
 
   .game-panel[data-screen="game"] .character-bubble {
-    top: -18px;
-    min-width: 48px;
-    max-width: 78px;
-    padding: 4px 6px;
-    font-size: 10px;
+    top: -22px;
+    min-width: 54px;
+    max-width: 92px;
+    padding: 5px 7px;
+    font-size: 12px;
   }
 
   .game-panel[data-screen="game"] .supply-area {
@@ -5045,24 +5063,32 @@ body:has(.game-panel:not([hidden])) .app-shell {
   }
 
   .game-panel[data-screen="game"] .operator-crew {
-    top: 44px;
-    grid-template-columns: repeat(3, 46px);
-    height: 66px;
-    min-height: 66px;
-    max-height: 66px;
+    top: 38px;
+    grid-template-columns: repeat(3, 54px);
+    height: 74px;
+    min-height: 74px;
+    max-height: 74px;
     gap: 8px;
   }
 
   .game-panel[data-screen="game"] .operator-agent {
-    width: 46px;
-    height: 66px;
-    min-height: 66px;
-    max-height: 66px;
+    width: 54px;
+    height: 74px;
+    min-height: 74px;
+    max-height: 74px;
   }
 
   .game-panel[data-screen="game"] .operator-image {
-    width: 46px;
-    height: 62px;
+    width: 54px;
+    height: 72px;
+  }
+
+  .game-panel[data-screen="game"] .character-bubble {
+    top: -20px;
+    min-width: 50px;
+    max-width: 84px;
+    padding: 4px 6px;
+    font-size: 11px;
   }
 
   .game-panel[data-screen="game"] .supply-area {
