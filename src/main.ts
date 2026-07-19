@@ -235,6 +235,7 @@ app.innerHTML = `
             <span class="tetris-letter">リ</span>
             <span class="tetris-letter">ス</span>
           </span>
+          <span class="game-title-no">の</span>
           <span class="game-title-manager">管理人</span>
         </h1>
         <p class="title-catch">
@@ -439,7 +440,7 @@ app.innerHTML = `
 
       <footer class="supply-area" aria-label="供給管理">
         <span class="replenishment-status" data-replenishment-status>
-          <span class="replenishment-label" data-replenishment-label>🚚 次の補充</span>
+          <span class="replenishment-label" data-replenishment-label>🚚 補充</span>
           <span class="replenishment-main" data-replenishment-main>あと${REPLENISH_INTERVAL}手</span>
           <span class="replenishment-detail" data-replenishment-detail></span>
         </span>
@@ -1022,7 +1023,7 @@ const renderReplenishmentStatus = () => {
     emitCharacterEvent("replenishmentCountdown", { turnsUntilReplenishment });
   }
   replenishmentStatus.dataset.replenishmentState = "waiting";
-  replenishmentLabel.textContent = "🚚 次回補充";
+  replenishmentLabel.textContent = "🚚 補充";
   replenishmentMain.textContent = `あと${turnsUntilReplenishment}手`;
   replenishmentDetail.innerHTML = `
     <span class="replenishment-shipment-name">${nextShipment.name}</span>

@@ -2190,6 +2190,16 @@ body::before {
     0 0 58px rgba(37, 99, 235, 0.34);
 }
 
+.game-title-no {
+  color: #bbf7d0;
+  font-size: clamp(22px, 4.4vw, 50px);
+  font-weight: 1000;
+  line-height: 0.82;
+  text-shadow:
+    0 0 10px rgba(134, 239, 172, 0.5),
+    0 0 24px rgba(34, 211, 238, 0.24);
+}
+
 .title-catch {
   margin: 0;
   color: #e2e8f0;
@@ -3272,6 +3282,7 @@ body:has(.game-panel:not([hidden])) .app-shell {
 
 .supply-button {
   position: relative;
+  --piece-shift-x: 0px;
   overflow: hidden;
   grid-template-rows: auto auto auto;
   min-height: 62px;
@@ -3303,14 +3314,29 @@ body:has(.game-panel:not([hidden])) .app-shell {
   background: currentColor;
   content: "";
   box-shadow: 9px 0 currentColor, 18px 0 currentColor, 27px 0 currentColor;
+  transform: translateX(var(--piece-shift-x));
+}
+
+.supply-button[data-supply-type="I"] {
+  --piece-shift-x: -13.5px;
 }
 
 .supply-button[data-supply-type="O"]::before {
   box-shadow: 9px 0 currentColor, 0 9px currentColor, 9px 9px currentColor;
 }
 
+.supply-button[data-supply-type="O"] {
+  --piece-shift-x: -4.5px;
+}
+
 .supply-button[data-supply-type="T"]::before {
   box-shadow: 9px 0 currentColor, 18px 0 currentColor, 9px 9px currentColor;
+}
+
+.supply-button[data-supply-type="T"],
+.supply-button[data-supply-type="L"],
+.supply-button[data-supply-type="J"] {
+  --piece-shift-x: -9px;
 }
 
 .supply-button[data-supply-type="L"]::before {
@@ -4818,17 +4844,17 @@ body:has(.game-panel:not([hidden])) .app-shell {
   .game-panel[data-screen="game"] .operator-crew {
     display: grid !important;
     position: absolute;
-    top: 50px;
+    top: 45px;
     right: 10px;
     bottom: auto;
     left: 10px;
-    grid-template-columns: repeat(3, 46px);
+    grid-template-columns: repeat(3, 54px);
     justify-content: center;
     width: auto;
-    height: 66px;
-    min-height: 66px;
-    max-height: 66px;
-    gap: 8px;
+    height: 74px;
+    min-height: 74px;
+    max-height: 74px;
+    gap: 10px;
     margin-right: 0;
     padding: 0;
     border: 0;
@@ -4838,25 +4864,25 @@ body:has(.game-panel:not([hidden])) .app-shell {
   }
 
   .game-panel[data-screen="game"] .operator-agent {
-    width: 46px;
-    height: 66px;
-    min-height: 66px;
-    max-height: 66px;
+    width: 54px;
+    height: 74px;
+    min-height: 74px;
+    max-height: 74px;
     overflow: visible;
   }
 
   .game-panel[data-screen="game"] .operator-image {
-    width: 46px;
-    height: 62px;
+    width: 54px;
+    height: 70px;
     object-fit: contain;
   }
 
   .game-panel[data-screen="game"] .character-bubble {
-    top: -15px;
-    min-width: 42px;
-    max-width: 68px;
-    padding: 3px 5px;
-    font-size: 9px;
+    top: -18px;
+    min-width: 48px;
+    max-width: 78px;
+    padding: 4px 6px;
+    font-size: 10px;
   }
 
   .game-panel[data-screen="game"] .supply-area {
@@ -4977,7 +5003,7 @@ body:has(.game-panel:not([hidden])) .app-shell {
   }
 
   .game-panel[data-screen="game"] .supply-button::before {
-    transform: scale(0.82);
+    transform: translateX(var(--piece-shift-x)) scale(0.82);
     transform-origin: center;
   }
 
@@ -5019,24 +5045,24 @@ body:has(.game-panel:not([hidden])) .app-shell {
   }
 
   .game-panel[data-screen="game"] .operator-crew {
-    top: 48px;
-    grid-template-columns: repeat(3, 40px);
-    height: 60px;
-    min-height: 60px;
-    max-height: 60px;
-    gap: 6px;
+    top: 44px;
+    grid-template-columns: repeat(3, 46px);
+    height: 66px;
+    min-height: 66px;
+    max-height: 66px;
+    gap: 8px;
   }
 
   .game-panel[data-screen="game"] .operator-agent {
-    width: 40px;
-    height: 60px;
-    min-height: 60px;
-    max-height: 60px;
+    width: 46px;
+    height: 66px;
+    min-height: 66px;
+    max-height: 66px;
   }
 
   .game-panel[data-screen="game"] .operator-image {
-    width: 40px;
-    height: 56px;
+    width: 46px;
+    height: 62px;
   }
 
   .game-panel[data-screen="game"] .supply-area {
