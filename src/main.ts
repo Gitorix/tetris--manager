@@ -1202,12 +1202,14 @@ const renderClearPanel = (snapshot: TetrisSnapshot) => {
     const nextStageId = getNextStageId();
     const hasNextStage = nextStageId !== currentStageId;
     clearNextButton.hidden = false;
-    clearNextButton.disabled = !stage.isTraining && !hasNextStage;
-    clearNextButton.textContent = stage.isTraining
-      ? "本ステージへ"
-      : hasNextStage
-        ? "次へ"
-        : "完了";
+    clearNextButton.disabled = !hasNextStage;
+    clearNextButton.textContent = hasNextStage ? "次へ" : "完了";
+    clearNextButton.setAttribute(
+      "aria-label",
+      hasNextStage
+        ? `${stage.isTraining ? "本ステージ Stage1" : STAGES_BY_ID.get(nextStageId)?.title ?? "次のステージ"}を開始`
+        : "次のステージはまだありません"
+    );
   }
 };
 
@@ -2609,23 +2611,6 @@ const returnToTitle = (source: string) => {
 
 clearRestartButton?.addEventListener("click", () => startTraining("stageclear-restart", currentStageId));
 clearNextButton?.addEventListener("click", () => {
-  if (getCurrentStage().isTraining) {
-    flowToken += 1;
-    clearStatusTimer();
-    clearReplenishmentTimer();
-    clearSupplyDecisionTimer();
-    clearEffectTimers();
-    stopLastSpurtBgm();
-    clearCharacterEvents();
-    isStageClear = false;
-    isPaused = false;
-    isExitConfirmOpen = false;
-    supplyLocked = false;
-    supplyPhase = "idle";
-    openStageScreen();
-    return;
-  }
-
   const nextStageId = getNextStageId();
   if (nextStageId !== currentStageId) {
     startTraining("stageclear-next", nextStageId);
