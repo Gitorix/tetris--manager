@@ -134,6 +134,25 @@ body {
   text-align: left;
 }
 
+.stage-screen {
+  align-content: start;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: min(100%, 860px);
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.stage-screen > .screen-heading,
+.stage-screen > .title-action-button {
+  grid-column: 1 / -1;
+  justify-self: center;
+}
+
+.stage-screen .stage-card {
+  width: 100%;
+}
+
 .stage-card:disabled {
   opacity: 0.5;
 }
@@ -1800,6 +1819,10 @@ body::before {
   background:
     linear-gradient(180deg, rgba(8, 47, 73, 0.72), rgba(3, 7, 18, 0.84)),
     var(--beta-panel);
+}
+
+.stage-screen {
+  overflow-y: auto;
 }
 
 .title-screen::before,
@@ -4588,6 +4611,14 @@ body:has(.game-panel:not([hidden])) .app-shell {
     align-items: start;
     min-height: 100dvh;
     overflow: auto;
+  }
+
+  .stage-screen {
+    grid-template-columns: 1fr;
+    width: min(100%, 430px);
+    max-height: calc(100dvh - 24px);
+    padding: 14px;
+    gap: 10px;
   }
 
   body:has(.game-panel:not([hidden])) .app-shell {

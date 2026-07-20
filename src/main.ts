@@ -2,7 +2,7 @@ import "./UI/styles.css";
 import type { PlacementAI, PlacementAICandidate } from "./ai/PlacementAI";
 import { SafeAI } from "./ai/SafeAI";
 import { CharacterEventManager, type CharacterEventType } from "./Character/CharacterEventManager";
-import { Inventory } from "./Game/Inventory";
+import { Inventory, MAX_INVENTORY } from "./Game/Inventory";
 import { TetrisEngine, type TetrisSnapshot } from "./Game/TetrisEngine";
 import { TETROMINO_ORDER, type TetrominoType } from "./Game/Tetromino";
 import { SaveManager, type StageResultRecord } from "./save/SaveManager";
@@ -32,6 +32,7 @@ const MANAGEMENT_SPEND_EFFECT_MS = 1200;
 const STAGE_CLEAR_EFFECT_MS = 2200;
 const LAST_SPURT_EFFECT_MS = 1900;
 const REPLENISH_NOTICE_MS = 2000;
+const WORLD_RANKER_TURN_GAP_MS = 90;
 const TARGET_SCORE = 1000;
 const LAST_SPURT_REMAINING_SCORE = 100;
 const MAX_MANAGEMENT_POWER = 100;
@@ -121,7 +122,7 @@ type DesiredPieceSnapshot = {
   worst: TetrominoType | null;
 };
 type ReplenishmentShipment = {
-  id: "normal" | "i" | "balance";
+  id: "normal" | "i" | "balance" | "manual" | "timeout";
   name: string;
   items: Partial<Record<TetrominoType, number>>;
 };
@@ -168,7 +169,10 @@ let managementFeedbackTimer: number | null = null;
 let replenishmentTimer: number | null = null;
 let hintUnlockTimer: number | null = null;
 let supplyDecisionTimer: number | null = null;
+let continuousAITimer: number | null = null;
+let replenishmentRequestTimer: number | null = null;
 let flowToken = 0;
+let continuousAIToken = 0;
 let currentStageId: StageId = DEFAULT_STAGE_ID;
 let managementPower = MAX_MANAGEMENT_POWER;
 let pendingManagementJudgement: DesiredPieceSnapshot | null = null;
@@ -184,6 +188,8 @@ let activeFlowJudgement: DesiredPieceSnapshot | null = null;
 let placementCount = 0;
 let replenishmentShipmentIndex = 0;
 let activeReplenishmentResult: ReplenishmentResult | null = null;
+let isReplenishmentRequestActive = false;
+let replenishmentRequestDeadline = 0;
 let trainingReportEntries: TrainingReportEntry[] = [];
 let unlockedHintThresholds = new Set<number>();
 let lastReplenishmentBubbleTurns: number | null = null;
@@ -857,10 +863,7 @@ const renderSupplyButtons = (snapshot: TetrisSnapshot) => {
       isPaused ||
       isExitConfirmOpen ||
       isCountdownActive ||
-      supplyLocked ||
-      snapshot.hasActiveTetromino ||
-      count <= 0 ||
-      supplyPhase !== "idle";
+      !isReplenishmentRequestActive;
   });
 };
 
@@ -880,9 +883,7 @@ const renderManagementSkillButtons = (snapshot: TetrisSnapshot) => {
       isGameOver ||
       isPaused ||
       isExitConfirmOpen ||
-      isCountdownActive ||
-      supplyLocked ||
-      snapshot.hasActiveTetromino;
+      isCountdownActive;
   });
 };
 
@@ -942,13 +943,24 @@ const renderSupplyStatus = (snapshot: TetrisSnapshot) => {
     return;
   }
 
+  if (isReplenishmentRequestActive) {
+    const remainingMs = Math.max(0, replenishmentRequestDeadline - Date.now());
+    setSupplyStatus(
+      "⚡ 補給要求",
+      `補給ブロックを選択してください（残り${Math.ceil(remainingMs / 1000)}秒）`,
+      "AIプレイ継続中",
+      "replenish"
+    );
+    return;
+  }
+
   if (supplyPhase === "idle") {
     if (snapshot.score >= TARGET_SCORE) {
       setSupplyStatus("✓ 目標達成", "下から6段以内を目指してください", "目標達成", "target");
       return;
     }
 
-    setSupplyStatus("□ 供給待ち", "ブロックを選択してください", "待機中", "idle");
+    setSupplyStatus("▶ 自動プレイ中", "世界ランカーがプレイ継続中", "補給待機", "idle");
   }
 };
 
@@ -1069,6 +1081,18 @@ const renderReplenishmentStatus = () => {
     replenishmentLabel.textContent = "🚚 補充便到着！";
     replenishmentMain.textContent = activeReplenishmentResult.shipment.name;
     replenishmentDetail.innerHTML = renderReplenishmentItems(activeReplenishmentResult.appliedItems);
+    return;
+  }
+
+  if (isReplenishmentRequestActive) {
+    const remainingMs = Math.max(0, replenishmentRequestDeadline - Date.now());
+    if (devStatus) {
+      devStatus.dataset.replenishmentMood = "soon";
+    }
+    replenishmentStatus.dataset.replenishmentState = "request";
+    replenishmentLabel.textContent = "⚡ 補給要求";
+    replenishmentMain.textContent = `残り${Math.ceil(remainingMs / 1000)}秒`;
+    replenishmentDetail.innerHTML = `<span class="replenishment-shipment-name">ブロックを選択</span>`;
     return;
   }
 
@@ -1277,6 +1301,21 @@ const clearSupplyDecisionTimer = () => {
   }
 };
 
+const clearReplenishmentRequestTimer = () => {
+  if (replenishmentRequestTimer !== null) {
+    window.clearTimeout(replenishmentRequestTimer);
+    replenishmentRequestTimer = null;
+  }
+};
+
+const stopContinuousAI = () => {
+  continuousAIToken += 1;
+  if (continuousAITimer !== null) {
+    window.clearTimeout(continuousAITimer);
+    continuousAITimer = null;
+  }
+};
+
 const clearEffectTimers = () => {
   effectTimers.forEach((timer) => window.clearTimeout(timer));
   effectTimers = [];
@@ -1369,6 +1408,7 @@ const runStartCountdown = async () => {
   supplyLocked = false;
   setGameState("playing", "countdown-complete");
   renderBoard(engine.getSnapshot());
+  startContinuousAI();
 };
 
 const clearCharacterEvents = () => {
@@ -1540,9 +1580,7 @@ const useManagementSkill = (skill: keyof typeof MANAGEMENT_SKILL_COSTS) => {
     isGameOver ||
     isPaused ||
     isExitConfirmOpen ||
-    isCountdownActive ||
-    supplyLocked ||
-    snapshot.hasActiveTetromino
+    isCountdownActive
   ) {
     return;
   }
@@ -1601,6 +1639,21 @@ const getAutoSupplyType = () => {
   return blockTypes.find((type) => inventory.canConsume(type)) ?? null;
 };
 
+const getWorldRankerPieceType = () => {
+  const desired = placementAI.desiredPiece;
+  const second = placementAI.secondChoicePiece;
+
+  if (desired && inventory.canConsume(desired)) {
+    return desired;
+  }
+
+  if (second && inventory.canConsume(second)) {
+    return second;
+  }
+
+  return blockTypes.find((type) => inventory.canConsume(type)) ?? null;
+};
+
 const handleSupplyTimeout = () => {
   supplyDecisionTimer = null;
   const snapshot = engine.getSnapshot();
@@ -1645,26 +1698,7 @@ const handleSupplyTimeout = () => {
   void supplyBlock(type, { isTimeoutAuto: true });
 };
 
-const syncSupplyDecisionTimer = (snapshot: TetrisSnapshot) => {
-  clearSupplyDecisionTimer();
-
-  if (
-    snapshot.isGameOver ||
-    gameState !== "playing" ||
-    isStageClear ||
-    isGameOver ||
-    isPaused ||
-    isExitConfirmOpen ||
-    isCountdownActive ||
-    supplyLocked ||
-    snapshot.hasActiveTetromino ||
-    supplyPhase !== "idle"
-  ) {
-    return;
-  }
-
-  supplyDecisionTimer = window.setTimeout(handleSupplyTimeout, getCurrentStage().decisionTimeMs);
-};
+const syncSupplyDecisionTimer = (_snapshot: TetrisSnapshot) => {};
 
 const renderPlacementStep = (rotationIndex: number, x: number, y: number) => {
   renderBoard(
@@ -1762,20 +1796,133 @@ const applyReplenishment = (): ReplenishmentResult => {
   };
 };
 
-const handlePlacementCount = () => {
-  placementCount += 1;
+const getRandomReplenishmentType = () => {
+  const candidates = blockTypes.filter((type) => inventory.getCount(type) < MAX_INVENTORY[type]);
+  const pool = candidates.length > 0 ? candidates : blockTypes;
+  return pool[Math.floor(Math.random() * pool.length)] ?? "I";
+};
 
-  if (placementCount % getCurrentStage().replenishmentInterval !== 0) {
-    activeReplenishmentResult = null;
-    return;
-  }
+const applySingleReplenishment = (type: TetrominoType, source: "manual" | "timeout"): ReplenishmentResult => {
+  const added = inventory.add(type, 1);
+  return {
+    shipment: {
+      id: source,
+      name: source === "manual" ? "補給完了" : "ランダム補給",
+      items: { [type]: 1 }
+    },
+    appliedItems: added > 0 ? { [type]: added } : {}
+  };
+};
 
-  clearReplenishmentTimer();
-  activeReplenishmentResult = applyReplenishment();
+const finishReplenishmentRequest = () => {
+  isReplenishmentRequestActive = false;
+  replenishmentRequestDeadline = 0;
+  clearReplenishmentRequestTimer();
+};
+
+const showReplenishmentResult = (result: ReplenishmentResult) => {
+  activeReplenishmentResult = result;
   lastReplenishmentBubbleTurns = null;
   emitCharacterEvent("replenishmentArrived");
   playUISound("replenish");
   scheduleReplenishmentArrivalHide();
+};
+
+const handleReplenishmentTimeout = () => {
+  if (
+    !isReplenishmentRequestActive ||
+    gameState !== "playing" ||
+    isStageClear ||
+    isGameOver ||
+    isPaused ||
+    isExitConfirmOpen ||
+    isCountdownActive
+  ) {
+    return;
+  }
+
+  finishReplenishmentRequest();
+  addManagementPower(TIMEOUT_MANAGEMENT_PENALTY);
+  showManagementFeedback({
+    kind: "worst",
+    mark: "×",
+    title: "補給失敗",
+    message: `管理力 ${TIMEOUT_MANAGEMENT_PENALTY}`,
+    delta: TIMEOUT_MANAGEMENT_PENALTY
+  });
+
+  if (isGameOver) {
+    return;
+  }
+
+  const type = getRandomReplenishmentType();
+  showReplenishmentResult(applySingleReplenishment(type, "timeout"));
+  setSupplyStatus("⚠ 補給失敗", `${type}をランダム補給`, "AIプレイ継続中", "replenish");
+  characterEvents.notify("asuton", "判断遅延！", 1700);
+  characterEvents.notify("minton", "急ぎます！", 1700);
+  renderBoard(engine.getSnapshot());
+};
+
+const startReplenishmentRequest = () => {
+  if (
+    isReplenishmentRequestActive ||
+    gameState !== "playing" ||
+    isStageClear ||
+    isGameOver ||
+    isPaused ||
+    isExitConfirmOpen ||
+    isCountdownActive
+  ) {
+    return;
+  }
+
+  isReplenishmentRequestActive = true;
+  replenishmentRequestDeadline = Date.now() + getCurrentStage().decisionTimeMs;
+  clearReplenishmentRequestTimer();
+  replenishmentRequestTimer = window.setTimeout(handleReplenishmentTimeout, getCurrentStage().decisionTimeMs);
+  characterEvents.notify("minton", "補給お願いします！", 1500);
+  setSupplyStatus("⚡ 補給要求", "補給ブロックを選択してください", "AIプレイ継続中", "replenish");
+  renderBoard(engine.getSnapshot());
+};
+
+const chooseReplenishment = (type: TetrominoType) => {
+  if (
+    !isReplenishmentRequestActive ||
+    gameState !== "playing" ||
+    isStageClear ||
+    isGameOver ||
+    isPaused ||
+    isExitConfirmOpen ||
+    isCountdownActive
+  ) {
+    return;
+  }
+
+  const desiredBeforeSupply = getDesiredPieceSnapshot();
+  finishReplenishmentRequest();
+  evaluateSupplyPattern(type);
+  if (isGameOver) {
+    return;
+  }
+
+  const feedback = applyManagementPowerReward(type, desiredBeforeSupply);
+  recordTrainingReportEntry(type, desiredBeforeSupply, feedback);
+  if (feedback) {
+    showManagementFeedback(feedback);
+  }
+  showReplenishmentResult(applySingleReplenishment(type, "manual"));
+  setSupplyStatus("🚚 補給完了", `${type}を補給しました`, "AIプレイ継続中", "replenish");
+  renderBoard(engine.getSnapshot());
+};
+
+const handlePlacementCount = () => {
+  placementCount += 1;
+
+  if (placementCount % getCurrentStage().replenishmentInterval !== 0) {
+    return;
+  }
+
+  startReplenishmentRequest();
 };
 
 const enterGameOver = (snapshot: TetrisSnapshot) => {
@@ -1785,10 +1932,13 @@ const enterGameOver = (snapshot: TetrisSnapshot) => {
 
   gameOverExecutionCount += 1;
   logDebug("[GameOver] count:", gameOverExecutionCount);
+  stopContinuousAI();
   flowToken += 1;
   clearStatusTimer();
   clearReplenishmentTimer();
   clearSupplyDecisionTimer();
+  clearReplenishmentRequestTimer();
+  isReplenishmentRequestActive = false;
   activeReplenishmentResult = null;
   stopFeedbackDisplay();
   stopLastSpurtBgm();
@@ -2078,9 +2228,11 @@ const pauseGame = () => {
   isPaused = true;
   setGameState("paused", "pause-button");
   flowToken += 1;
+  stopContinuousAI();
   clearStatusTimer();
   clearReplenishmentTimer();
   clearSupplyDecisionTimer();
+  clearReplenishmentRequestTimer();
   renderBoard(snapshot);
 };
 
@@ -2097,15 +2249,23 @@ const resumeGame = () => {
     scheduleReplenishmentArrivalHide();
   }
 
+  if (isReplenishmentRequestActive) {
+    replenishmentRequestDeadline = Date.now() + getCurrentStage().decisionTimeMs;
+    clearReplenishmentRequestTimer();
+    replenishmentRequestTimer = window.setTimeout(handleReplenishmentTimeout, getCurrentStage().decisionTimeMs);
+  }
+
   if (snapshot.hasActiveTetromino && activeFlowType) {
     const token = ++flowToken;
     supplyLocked = true;
     supplyPhase = "placement";
-    void startSafeAIPlacement(
-      activeFlowType,
-      token,
-      activeFlowJudgement ?? pendingManagementJudgement ?? getDesiredPieceSnapshot()
-    );
+    void startSafeAIPlacement(activeFlowType, token, activeFlowJudgement ?? pendingManagementJudgement).then(() => {
+      if (gameState === "playing" && !isPaused && !isStageClear && !isGameOver) {
+        supplyLocked = false;
+        supplyPhase = "idle";
+        startContinuousAI();
+      }
+    });
     renderBoard(engine.getSnapshot());
     return;
   }
@@ -2118,6 +2278,7 @@ const resumeGame = () => {
         ? "idle"
         : pausedPhaseBeforeMenu;
   renderBoard(snapshot);
+  startContinuousAI();
 };
 
 const restartFromMenu = () => {
@@ -2144,9 +2305,11 @@ const openExitConfirm = () => {
   isExitConfirmOpen = true;
   isPaused = gameState === "paused";
   flowToken += 1;
+  stopContinuousAI();
   clearStatusTimer();
   clearReplenishmentTimer();
   clearSupplyDecisionTimer();
+  clearReplenishmentRequestTimer();
   renderBoard(snapshot);
 };
 
@@ -2298,6 +2461,9 @@ const completePlacement = (
     setGameState("stageclear", "completePlacement");
     activeReplenishmentResult = null;
     clearReplenishmentTimer();
+    clearReplenishmentRequestTimer();
+    isReplenishmentRequestActive = false;
+    stopContinuousAI();
     supplyPhase = "idle";
     delete document.body.dataset.lastSpurt;
     stopLastSpurtBgm();
@@ -2419,6 +2585,84 @@ const startSafeAIPlacement = async (
   completePlacement(engine.hardDrop(), type, desiredBeforeSupply);
 };
 
+const scheduleContinuousAI = (token: number, delay = WORLD_RANKER_TURN_GAP_MS) => {
+  if (continuousAITimer !== null) {
+    window.clearTimeout(continuousAITimer);
+  }
+
+  continuousAITimer = window.setTimeout(() => {
+    continuousAITimer = null;
+    void runContinuousAI(token);
+  }, delay);
+};
+
+const runContinuousAI = async (token: number) => {
+  if (
+    token !== continuousAIToken ||
+    gameState !== "playing" ||
+    isStageClear ||
+    isGameOver ||
+    isPaused ||
+    isExitConfirmOpen ||
+    isCountdownActive
+  ) {
+    return;
+  }
+
+  const snapshot = engine.getSnapshot();
+  if (snapshot.isGameOver) {
+    enterGameOver(snapshot);
+    return;
+  }
+
+  if (snapshot.hasActiveTetromino || supplyLocked) {
+    scheduleContinuousAI(token, WORLD_RANKER_TURN_GAP_MS);
+    return;
+  }
+
+  let type = getWorldRankerPieceType();
+  if (!type) {
+    addManagementPower(TIMEOUT_MANAGEMENT_PENALTY);
+    showManagementFeedback({
+      kind: "worst",
+      mark: "×",
+      title: "在庫切れ",
+      message: `管理力 ${TIMEOUT_MANAGEMENT_PENALTY}`,
+      delta: TIMEOUT_MANAGEMENT_PENALTY
+    });
+
+    if (isGameOver) {
+      return;
+    }
+
+    type = getRandomReplenishmentType();
+    showReplenishmentResult(applySingleReplenishment(type, "timeout"));
+  }
+
+  if (!inventory.consume(type)) {
+    scheduleContinuousAI(token, WORLD_RANKER_TURN_GAP_MS);
+    return;
+  }
+
+  const turnToken = ++flowToken;
+  supplyPhase = "placement";
+  activeFlowType = type;
+  activeFlowJudgement = null;
+  await startSafeAIPlacement(type, turnToken, null);
+
+  if (token === continuousAIToken && gameState === "playing" && !isStageClear && !isGameOver) {
+    supplyLocked = false;
+    supplyPhase = "idle";
+    scheduleContinuousAI(token);
+  }
+};
+
+const startContinuousAI = () => {
+  stopContinuousAI();
+  const token = ++continuousAIToken;
+  scheduleContinuousAI(token, WORLD_RANKER_TURN_GAP_MS);
+};
+
 const supplyBlock = async (type: TetrominoType, options: { isTimeoutAuto?: boolean } = {}) => {
   const snapshot = engine.getSnapshot();
 
@@ -2486,7 +2730,7 @@ devControlButtons.forEach((button) => {
 
 supplyButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    supplyBlock(button.dataset.supplyType as TetrominoType);
+    chooseReplenishment(button.dataset.supplyType as TetrominoType);
   });
 });
 
@@ -2506,7 +2750,9 @@ const resetGame = (countAsPlay = false, source = "resetGame", stageId: StageId =
   clearReplenishmentTimer();
   clearHintUnlockTimer();
   clearSupplyDecisionTimer();
+  clearReplenishmentRequestTimer();
   clearEffectTimers();
+  stopContinuousAI();
   stopLastSpurtBgm();
   clearCharacterEvents();
   if (devStatus) {
@@ -2533,6 +2779,8 @@ const resetGame = (countAsPlay = false, source = "resetGame", stageId: StageId =
   isPaused = false;
   isExitConfirmOpen = false;
   isCountdownActive = false;
+  isReplenishmentRequestActive = false;
+  replenishmentRequestDeadline = 0;
   pausedPhaseBeforeMenu = "idle";
   placementCount = 0;
   replenishmentShipmentIndex = 0;
@@ -2582,7 +2830,9 @@ const returnToTitle = (source: string) => {
   clearReplenishmentTimer();
   clearHintUnlockTimer();
   clearSupplyDecisionTimer();
+  clearReplenishmentRequestTimer();
   clearEffectTimers();
+  stopContinuousAI();
   stopLastSpurtBgm();
   clearCharacterEvents();
   if (devStatus) {
@@ -2599,6 +2849,8 @@ const returnToTitle = (source: string) => {
   isPaused = false;
   isExitConfirmOpen = false;
   isCountdownActive = false;
+  isReplenishmentRequestActive = false;
+  replenishmentRequestDeadline = 0;
   pausedPhaseBeforeMenu = "idle";
   activeFlowType = null;
   activeFlowJudgement = null;
