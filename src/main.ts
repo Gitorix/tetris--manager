@@ -37,16 +37,50 @@ const REPLENISH_NOTICE_MS = 2000;
 const TARGET_SCORE = 1000;
 const LAST_SPURT_REMAINING_SCORE = 100;
 const MAX_MANAGEMENT_POWER = 100;
+const MIN_MANAGEMENT_POWER = -100;
+const TIMEOUT_MANAGEMENT_PENALTY = -20;
 const MANAGEMENT_SKILL_COSTS = {
   aiHint: 30,
   emergencyReplenish: 20,
   inventoryAnalysis: 10
 } as const;
 const AI_HINT_UNLOCK_THRESHOLDS = [30, 60, 90] as const;
-const DESIRED_PIECE_BONUS = 10;
-const SECOND_DESIRED_PIECE_BONUS = 5;
+const DESIRED_PIECE_BONUS = 5;
+const SECOND_DESIRED_PIECE_BONUS = 2;
 const WORST_CHOICE_PENALTY = -10;
 const BALANCE_SUPPLY_BONUS = 10;
+
+type StageId = "training0" | "stage1" | "stage2" | "stage3" | "stage4" | "stage5" | "stage6" | "stage7";
+type StageConfig = {
+  id: StageId;
+  title: string;
+  shortTitle: string;
+  isTraining: boolean;
+  replenishmentInterval: number;
+  decisionTimeMs: number;
+  hintLevel: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+};
+
+const STAGE_CONFIGS: StageConfig[] = [
+  {
+    id: "training0",
+    title: "新人管理人研修①",
+    shortTitle: "研修",
+    isTraining: true,
+    replenishmentInterval: 7,
+    decisionTimeMs: 14000,
+    hintLevel: 7
+  },
+  { id: "stage1", title: "本ステージ Stage1", shortTitle: "Stage1", isTraining: false, replenishmentInterval: 7, decisionTimeMs: 10000, hintLevel: 7 },
+  { id: "stage2", title: "本ステージ Stage2", shortTitle: "Stage2", isTraining: false, replenishmentInterval: 6, decisionTimeMs: 8500, hintLevel: 6 },
+  { id: "stage3", title: "本ステージ Stage3", shortTitle: "Stage3", isTraining: false, replenishmentInterval: 5, decisionTimeMs: 7000, hintLevel: 5 },
+  { id: "stage4", title: "本ステージ Stage4", shortTitle: "Stage4", isTraining: false, replenishmentInterval: 4, decisionTimeMs: 5500, hintLevel: 4 },
+  { id: "stage5", title: "本ステージ Stage5", shortTitle: "Stage5", isTraining: false, replenishmentInterval: 3, decisionTimeMs: 4200, hintLevel: 3 },
+  { id: "stage6", title: "本ステージ Stage6", shortTitle: "Stage6", isTraining: false, replenishmentInterval: 2, decisionTimeMs: 3200, hintLevel: 2 },
+  { id: "stage7", title: "本ステージ Stage7", shortTitle: "Stage7", isTraining: false, replenishmentInterval: 1, decisionTimeMs: 2200, hintLevel: 1 }
+];
+const STAGES_BY_ID = new Map(STAGE_CONFIGS.map((stage) => [stage.id, stage]));
+const DEFAULT_STAGE_ID: StageId = "training0";
 
 type SupplyPhase = "idle" | "shipping" | "received" | "placement" | "fixed" | "paused" | "gameover";
 type GameState = "title" | "countdown" | "playing" | "paused" | "gameover" | "stageclear";
@@ -135,8 +169,10 @@ let statusTimer: number | null = null;
 let managementFeedbackTimer: number | null = null;
 let replenishmentTimer: number | null = null;
 let hintUnlockTimer: number | null = null;
+let supplyDecisionTimer: number | null = null;
 let flowToken = 0;
-let managementPower = 0;
+let currentStageId: StageId = DEFAULT_STAGE_ID;
+let managementPower = MAX_MANAGEMENT_POWER;
 let pendingManagementJudgement: DesiredPieceSnapshot | null = null;
 let isStageClear = false;
 let isGameOver = false;
@@ -168,6 +204,8 @@ let stageClearExecutionCount = 0;
 let gameOverExecutionCount = 0;
 let resetExecutionCount = 0;
 let countdownStartCount = 0;
+
+const getCurrentStage = () => STAGES_BY_ID.get(currentStageId) ?? STAGE_CONFIGS[0];
 
 if (!app) {
   throw new Error("App root element was not found.");
@@ -262,6 +300,7 @@ app.innerHTML = `
       </div>
       <div class="title-actions">
         <button class="title-action-button title-action-button-primary" type="button" data-action="start-training">研修を始める</button>
+        <button class="title-action-button title-action-button-secondary" type="button" data-action="open-stage">ステージ選択</button>
         <button class="title-action-button title-action-button-secondary" type="button" data-action="open-records">記録を見る</button>
       </div>
       <span class="safeai-standby">SafeAI　待機中…</span>
@@ -281,20 +320,21 @@ app.innerHTML = `
         <span class="stage-card-row" data-stage-best-power>最高管理力 --</span>
         <span class="stage-card-row" data-stage-play-count>プレイ回数 0</span>
         <span class="stage-card-row" data-stage-clear-count>クリア回数 0</span>
-        <span class="stage-card-action">新しく研修開始</span>
+        <span class="stage-card-action">研修を始める</span>
       </button>
-      <button class="stage-card" type="button" disabled>
-        <span class="stage-card-locked">未開放</span>
-        <span class="stage-card-title">新人管理人研修②</span>
-        <span class="stage-card-row">ProAI</span>
-        <span class="stage-card-row">（未開放）</span>
-      </button>
-      <button class="stage-card" type="button" disabled>
-        <span class="stage-card-locked">未開放</span>
-        <span class="stage-card-title">新人管理人研修③</span>
-        <span class="stage-card-row">LegendAI</span>
-        <span class="stage-card-row">（未開放）</span>
-      </button>
+      ${STAGE_CONFIGS.filter((stage) => !stage.isTraining)
+        .map(
+          (stage) => `
+            <button class="stage-card stage-card-main" type="button" data-action="start-stage" data-stage-id="${stage.id}">
+              <span class="stage-card-title">${stage.shortTitle}</span>
+              <span class="stage-card-row">担当AI：SafeAI</span>
+              <span class="stage-card-row">補充間隔 ${stage.replenishmentInterval}</span>
+              <span class="stage-card-row">判断時間 ${Math.round(stage.decisionTimeMs / 1000)}秒</span>
+              <span class="stage-card-action">本ステージ開始</span>
+            </button>
+          `
+        )
+        .join("")}
       <button class="title-action-button title-action-button-secondary" type="button" data-action="back-title">タイトルへ戻る</button>
     </section>
 
@@ -312,7 +352,7 @@ app.innerHTML = `
       <header class="status-grid" aria-label="ステータス">
         <div class="status-item">
           <span class="status-label">ステージ</span>
-          <span class="status-value">新人管理人研修①</span>
+          <span class="status-value" data-stage-title>新人管理人研修①</span>
         </div>
         <div class="status-item">
           <span class="status-label">スコア</span>
@@ -324,7 +364,7 @@ app.innerHTML = `
         </div>
         <div class="status-item">
           <span class="status-label">管理力</span>
-          <span class="status-value" data-management-power>0 / 100</span>
+          <span class="status-value" data-management-power>100 / 100</span>
         </div>
         <div class="game-top-actions" aria-label="ゲーム操作">
           <button class="game-icon-button" type="button" data-action="pause-game" aria-label="一時停止">⏸</button>
@@ -419,8 +459,8 @@ app.innerHTML = `
           <span class="safe-ai-comment" data-safe-ai-comment>供給の傾向を見直してみましょう。</span>
         </section>
         <section class="game-over-panel" data-game-over-panel hidden aria-label="ゲームオーバー">
-          <span class="game-over-panel-title">研修失敗</span>
-          <span class="game-over-panel-message">盤面が上まで積み上がりました</span>
+          <span class="game-over-panel-title">管理終了</span>
+          <span class="game-over-panel-message">管理人を解任されました</span>
           <span class="game-over-panel-result" data-game-over-final-score>最終スコア 0</span>
           <span class="game-over-panel-result" data-game-over-final-management-power>最終管理力 0 / 100</span>
           <button class="game-over-restart-button" type="button">もう一度遊ぶ</button>
@@ -491,6 +531,8 @@ app.innerHTML = `
 let boardCells = Array.from(document.querySelectorAll<HTMLSpanElement>(".board-cell"));
 const boardGrid = document.querySelector<HTMLDivElement>(".board-grid");
 const scoreValue = document.querySelector<HTMLSpanElement>("[data-score]");
+const stageTitleValue = document.querySelector<HTMLSpanElement>("[data-stage-title]");
+const targetScoreValue = document.querySelector<HTMLSpanElement>("[data-target-score]");
 const managementPowerValue = document.querySelector<HTMLSpanElement>("[data-management-power]");
 const devStatus = document.querySelector<HTMLElement>(".dev-status");
 const supplyStatusTitle = document.querySelector<HTMLSpanElement>(".supply-status-title");
@@ -554,6 +596,7 @@ const stageBestRate = document.querySelector<HTMLSpanElement>("[data-stage-best-
 const stageBestPower = document.querySelector<HTMLSpanElement>("[data-stage-best-power]");
 const stagePlayCount = document.querySelector<HTMLSpanElement>("[data-stage-play-count]");
 const stageClearCount = document.querySelector<HTMLSpanElement>("[data-stage-clear-count]");
+const mainStageCards = Array.from(document.querySelectorAll<HTMLButtonElement>(".stage-card-main"));
 const characterEvents = new CharacterEventManager({
   root: devStatus,
   bubble: operatorBubble
@@ -632,6 +675,14 @@ const renderBoard = (snapshot: TetrisSnapshot) => {
     scoreValue.textContent = String(snapshot.score);
   }
 
+  if (stageTitleValue) {
+    stageTitleValue.textContent = getCurrentStage().title;
+  }
+
+  if (targetScoreValue) {
+    targetScoreValue.textContent = String(TARGET_SCORE);
+  }
+
   if (managementPowerValue) {
     managementPowerValue.textContent = `${managementPower} / ${MAX_MANAGEMENT_POWER}`;
   }
@@ -677,6 +728,7 @@ const renderBoard = (snapshot: TetrisSnapshot) => {
   renderSupplyStatus(snapshot);
   renderPauseMenu();
   renderExitConfirm();
+  syncSupplyDecisionTimer(snapshot);
 };
 
 const getAudioContext = () => {
@@ -818,7 +870,10 @@ const renderManagementSkillButtons = (snapshot: TetrisSnapshot) => {
   managementSkillButtons.forEach((button) => {
     const skill = button.dataset.managementSkill as keyof typeof MANAGEMENT_SKILL_COSTS;
     const cost = MANAGEMENT_SKILL_COSTS[skill];
-    button.dataset.powerState = managementPower < cost ? "shortage" : "ready";
+    const canSpend =
+      managementPower - cost >= MIN_MANAGEMENT_POWER &&
+      (cost !== 30 || managementPower >= -70);
+    button.dataset.powerState = canSpend ? "ready" : "shortage";
 
     button.disabled =
       snapshot.isGameOver ||
@@ -874,12 +929,13 @@ const renderSupplyStatus = (snapshot: TetrisSnapshot) => {
   }
 
   if (isStageClear) {
-    setSupplyStatus("✓ 研修クリア", "新人管理人研修① 完了", "完了", "clear");
+    const stage = getCurrentStage();
+    setSupplyStatus("✓ クリア", stage.isTraining ? "本ステージ解放" : `${stage.shortTitle} 完了`, "完了", "clear");
     return;
   }
 
   if (snapshot.isGameOver || isGameOver) {
-    setSupplyStatus("× 研修失敗", "盤面が上まで積み上がりました", "停止中", "gameover");
+    setSupplyStatus("× 管理終了", "管理人を解任されました", "停止中", "gameover");
     return;
   }
 
@@ -918,7 +974,7 @@ const renderStageProgress = (snapshot: TetrisSnapshot) => {
   stageProgress.hidden = false;
 
   if (snapshot.isGameOver || isGameOver) {
-    stageProgress.textContent = "研修失敗";
+    stageProgress.textContent = "管理終了";
     stageProgress.dataset.stageState = "gameover";
     return;
   }
@@ -938,8 +994,9 @@ const renderStageProgress = (snapshot: TetrisSnapshot) => {
 };
 
 const getTurnsUntilReplenishment = () => {
-  const remainder = placementCount % REPLENISH_INTERVAL;
-  return remainder === 0 ? REPLENISH_INTERVAL : REPLENISH_INTERVAL - remainder;
+  const interval = getCurrentStage().replenishmentInterval;
+  const remainder = placementCount % interval;
+  return remainder === 0 ? interval : interval - remainder;
 };
 
 const getReplenishmentItemEntries = (items: Partial<Record<TetrominoType, number>>) =>
@@ -1036,19 +1093,28 @@ const renderReplenishmentStatus = () => {
 };
 
 const getAIHintText = (power = managementPower) => {
-  if (power >= 90) {
-    return "盤面を低く整えよう。";
+  if (power < -70) {
+    return "解析不能";
   }
 
-  if (power >= 60) {
-    return "長いブロックを活かせそう。";
+  switch (getCurrentStage().hintLevel) {
+    case 7:
+      return "低く平らに。穴を避けよう。";
+    case 6:
+      return "穴を避けて低く。";
+    case 5:
+      return "低い配置を優先。";
+    case 4:
+      return "高く積みすぎ注意。";
+    case 3:
+      return "低く保とう。";
+    case 2:
+      return "穴注意。";
+    case 1:
+      return "……";
+    case 0:
+      return "？？？";
   }
-
-  if (power >= 30) {
-    return "高く積みすぎ注意。";
-  }
-
-  return "？？？";
 };
 
 const renderAIHint = () => {
@@ -1058,8 +1124,8 @@ const renderAIHint = () => {
 
   aiHintPanel.hidden = isStageClear || isGameOver;
   aiHintMessage.textContent = getAIHintText();
-  aiHintNext.hidden = managementPower >= 30;
-  aiHintNext.textContent = `管理力30で解放 / あと${Math.max(0, 30 - managementPower)}で解放`;
+  aiHintNext.hidden = true;
+  aiHintNext.textContent = "";
   aiHintPanel.dataset.hintLevel =
     managementPower >= 90 ? "high" : managementPower >= 60 ? "mid" : managementPower >= 30 ? "low" : "locked";
 };
@@ -1188,6 +1254,13 @@ const clearHintUnlockTimer = () => {
   if (hintUnlockTimer !== null) {
     window.clearTimeout(hintUnlockTimer);
     hintUnlockTimer = null;
+  }
+};
+
+const clearSupplyDecisionTimer = () => {
+  if (supplyDecisionTimer !== null) {
+    window.clearTimeout(supplyDecisionTimer);
+    supplyDecisionTimer = null;
   }
 };
 
@@ -1329,7 +1402,7 @@ const showManagementSpendEffect = (amount: number) => {
 
 const showStageClearEffect = () => {
   replayEffect(stageClearEffect, STAGE_CLEAR_EFFECT_MS);
-  characterEvents.notify("miston", "研修クリア！", STAGE_CLEAR_EFFECT_MS);
+  characterEvents.notify("miston", getCurrentStage().isTraining ? "本番解放！" : "ステージクリア！", STAGE_CLEAR_EFFECT_MS);
   characterEvents.notify("minton", "準備OK！", STAGE_CLEAR_EFFECT_MS);
   characterEvents.notify("asuton", "記録確認！", STAGE_CLEAR_EFFECT_MS);
 };
@@ -1418,7 +1491,11 @@ const showManagementShortage = () => {
 };
 
 const spendManagementPower = (amount: number) => {
-  if (managementPower < amount) {
+  if (managementPower - amount < MIN_MANAGEMENT_POWER) {
+    return false;
+  }
+
+  if (amount === 30 && managementPower < -70) {
     return false;
   }
 
@@ -1502,6 +1579,80 @@ const waitFor = (milliseconds: number, token: number) =>
     }, milliseconds);
   });
 
+const getAutoSupplyType = () => {
+  const desired = placementAI.desiredPiece;
+  if (desired && inventory.canConsume(desired)) {
+    return desired;
+  }
+
+  return blockTypes.find((type) => inventory.canConsume(type)) ?? null;
+};
+
+const handleSupplyTimeout = () => {
+  supplyDecisionTimer = null;
+  const snapshot = engine.getSnapshot();
+
+  if (
+    snapshot.isGameOver ||
+    gameState !== "playing" ||
+    isStageClear ||
+    isGameOver ||
+    isPaused ||
+    isExitConfirmOpen ||
+    isCountdownActive ||
+    supplyLocked ||
+    snapshot.hasActiveTetromino ||
+    supplyPhase !== "idle"
+  ) {
+    return;
+  }
+
+  addManagementPower(TIMEOUT_MANAGEMENT_PENALTY);
+  showManagementFeedback({
+    kind: "worst",
+    mark: "×",
+    title: "補給遅延",
+    message: `管理力 ${TIMEOUT_MANAGEMENT_PENALTY}`,
+    delta: TIMEOUT_MANAGEMENT_PENALTY
+  });
+  characterEvents.notify("asuton", "判断遅延！", 1700);
+  characterEvents.notify("minton", "急ぎます！", 1700);
+
+  if (isGameOver) {
+    return;
+  }
+
+  const type = getAutoSupplyType();
+  if (!type) {
+    enterGameOver(engine.markGameOver());
+    return;
+  }
+
+  setSupplyStatus("⚠ 補給遅延", `${type}ブロックを自動発送`, "管理力 -20", "shipping");
+  void supplyBlock(type, { isTimeoutAuto: true });
+};
+
+const syncSupplyDecisionTimer = (snapshot: TetrisSnapshot) => {
+  clearSupplyDecisionTimer();
+
+  if (
+    snapshot.isGameOver ||
+    gameState !== "playing" ||
+    isStageClear ||
+    isGameOver ||
+    isPaused ||
+    isExitConfirmOpen ||
+    isCountdownActive ||
+    supplyLocked ||
+    snapshot.hasActiveTetromino ||
+    supplyPhase !== "idle"
+  ) {
+    return;
+  }
+
+  supplyDecisionTimer = window.setTimeout(handleSupplyTimeout, getCurrentStage().decisionTimeMs);
+};
+
 const renderPlacementStep = (rotationIndex: number, x: number, y: number) => {
   renderBoard(
     engine.previewPlacement({
@@ -1520,7 +1671,7 @@ const getDesiredPieceSnapshot = (): DesiredPieceSnapshot => ({
 const addManagementPower = (amount: number) => {
   const before = managementPower;
   managementPower = Math.max(
-    0,
+    MIN_MANAGEMENT_POWER,
     Math.min(MAX_MANAGEMENT_POWER, managementPower + amount)
   );
   const unlockedThreshold = AI_HINT_UNLOCK_THRESHOLDS.find(
@@ -1543,6 +1694,11 @@ const addManagementPower = (amount: number) => {
 
   if (before < MAX_MANAGEMENT_POWER && managementPower === MAX_MANAGEMENT_POWER && !hasShownManagementMax) {
     showManagementMaxEffect();
+  }
+
+  if (managementPower <= MIN_MANAGEMENT_POWER && !isGameOver && !isStageClear && gameState === "playing") {
+    setSupplyStatus("× 解任通知", "補給判断能力不足", "管理力 -100", "gameover");
+    enterGameOver(engine.getSnapshot());
   }
 };
 
@@ -1596,7 +1752,7 @@ const applyReplenishment = (): ReplenishmentResult => {
 const handlePlacementCount = () => {
   placementCount += 1;
 
-  if (placementCount % REPLENISH_INTERVAL !== 0) {
+  if (placementCount % getCurrentStage().replenishmentInterval !== 0) {
     activeReplenishmentResult = null;
     return;
   }
@@ -1619,6 +1775,7 @@ const enterGameOver = (snapshot: TetrisSnapshot) => {
   flowToken += 1;
   clearStatusTimer();
   clearReplenishmentTimer();
+  clearSupplyDecisionTimer();
   activeReplenishmentResult = null;
   stopFeedbackDisplay();
   stopLastSpurtBgm();
@@ -1687,8 +1844,8 @@ const applyManagementPowerReward = (
     return {
       kind: "best",
       mark: "◎",
-      title: "希望どおり！",
-      message: "管理力 +10",
+      title: "最適補給！",
+      message: "管理力 +5",
       delta: DESIRED_PIECE_BONUS
     };
   }
@@ -1698,8 +1855,8 @@ const applyManagementPowerReward = (
     return {
       kind: "second",
       mark: "○",
-      title: "惜しい！ 第2候補",
-      message: "管理力 +5",
+      title: "良い補給",
+      message: "管理力 +2",
       delta: SECOND_DESIRED_PIECE_BONUS
     };
   }
@@ -1709,7 +1866,7 @@ const applyManagementPowerReward = (
     return {
       kind: "worst",
       mark: "×",
-      title: "そのブロックは厳しい…",
+      title: "悪い補給",
       message: "管理力 -10",
       delta: WORST_CHOICE_PENALTY
     };
@@ -1846,6 +2003,16 @@ const renderStageScreen = () => {
   if (stageClearCount) {
     stageClearCount.textContent = `クリア回数 ${saveData.totalClearCount}`;
   }
+
+  mainStageCards.forEach((card) => {
+    const unlocked = record.cleared;
+    card.disabled = !unlocked;
+    card.dataset.stageState = unlocked ? "unlocked" : "locked";
+    const action = card.querySelector<HTMLSpanElement>(".stage-card-action");
+    if (action) {
+      action.textContent = unlocked ? "本ステージ開始" : "研修クリアで解放";
+    }
+  });
 };
 
 const renderRecordsScreen = () => {
@@ -1900,6 +2067,7 @@ const pauseGame = () => {
   flowToken += 1;
   clearStatusTimer();
   clearReplenishmentTimer();
+  clearSupplyDecisionTimer();
   renderBoard(snapshot);
 };
 
@@ -1965,6 +2133,7 @@ const openExitConfirm = () => {
   flowToken += 1;
   clearStatusTimer();
   clearReplenishmentTimer();
+  clearSupplyDecisionTimer();
   renderBoard(snapshot);
 };
 
@@ -2086,6 +2255,10 @@ const completePlacement = (
       showManagementFeedback(managementFeedbackResult);
     }
 
+    if (isGameOver) {
+      return;
+    }
+
     if (snapshot.lastClearedLines > 0) {
       const reactionToken = flowToken;
       window.setTimeout(() => {
@@ -2120,11 +2293,11 @@ const completePlacement = (
   }
 
   setSupplyStatus(
-    isGameOver ? "× 研修失敗" : isStageClear ? "✓ 研修クリア" : "⬇ 配置中",
+    isGameOver ? "× 管理終了" : isStageClear ? "✓ クリア" : "⬇ 配置中",
     isGameOver
-      ? "盤面が上まで積み上がりました"
+      ? "管理人を解任されました"
       : isStageClear
-        ? "新人管理人研修① 完了"
+        ? getCurrentStage().isTraining ? "本ステージ解放" : `${getCurrentStage().shortTitle} 完了`
         : "次の供給を準備中",
     isGameOver ? "停止中" : isStageClear ? "完了" : "固定完了",
     isGameOver ? "gameover" : isStageClear ? "clear" : "placement"
@@ -2188,7 +2361,7 @@ const animateSafeAIPlacement = async (
 const startSafeAIPlacement = async (
   type: TetrominoType,
   token: number,
-  desiredBeforeSupply: DesiredPieceSnapshot
+  desiredBeforeSupply: DesiredPieceSnapshot | null
 ) => {
   if (isPaused || isExitConfirmOpen || isCountdownActive) {
     return;
@@ -2231,7 +2404,7 @@ const startSafeAIPlacement = async (
   completePlacement(engine.hardDrop(), type, desiredBeforeSupply);
 };
 
-const supplyBlock = async (type: TetrominoType) => {
+const supplyBlock = async (type: TetrominoType, options: { isTimeoutAuto?: boolean } = {}) => {
   const snapshot = engine.getSnapshot();
 
   if (
@@ -2252,13 +2425,19 @@ const supplyBlock = async (type: TetrominoType) => {
 
   const token = ++flowToken;
   const desiredBeforeSupply = getDesiredPieceSnapshot();
-  pendingManagementJudgement = desiredBeforeSupply;
+  clearSupplyDecisionTimer();
+  pendingManagementJudgement = options.isTimeoutAuto ? null : desiredBeforeSupply;
   activeFlowType = type;
-  activeFlowJudgement = desiredBeforeSupply;
+  activeFlowJudgement = options.isTimeoutAuto ? null : desiredBeforeSupply;
   supplyLocked = true;
   supplyPhase = "shipping";
   inventory.consume(type);
-  evaluateSupplyPattern(type);
+  if (!options.isTimeoutAuto) {
+    evaluateSupplyPattern(type);
+    if (isGameOver) {
+      return;
+    }
+  }
   const suppliedSnapshot = engine.supplyTetromino(type);
 
   if (suppliedSnapshot.isGameOver) {
@@ -2281,7 +2460,7 @@ const supplyBlock = async (type: TetrominoType) => {
   if (!(await waitFor(RECEIVED_DISPLAY_MS, token))) return;
   if (isPaused || isExitConfirmOpen || isCountdownActive) return;
 
-  await startSafeAIPlacement(type, token, desiredBeforeSupply);
+  await startSafeAIPlacement(type, token, options.isTimeoutAuto ? null : desiredBeforeSupply);
 };
 
 devControlButtons.forEach((button) => {
@@ -2302,7 +2481,8 @@ managementSkillButtons.forEach((button) => {
   });
 });
 
-const resetGame = (countAsPlay = false, source = "resetGame") => {
+const resetGame = (countAsPlay = false, source = "resetGame", stageId: StageId = currentStageId) => {
+  currentStageId = stageId;
   resetExecutionCount += 1;
   logDebug("[Reset] count:", resetExecutionCount, "source:", source);
   saveStageResult(false);
@@ -2310,6 +2490,7 @@ const resetGame = (countAsPlay = false, source = "resetGame") => {
   clearStatusTimer();
   clearReplenishmentTimer();
   clearHintUnlockTimer();
+  clearSupplyDecisionTimer();
   clearEffectTimers();
   stopLastSpurtBgm();
   clearCharacterEvents();
@@ -2328,7 +2509,7 @@ const resetGame = (countAsPlay = false, source = "resetGame") => {
   hideAllEffects();
   delete document.body.dataset.lastSpurt;
   inventory.reset();
-  managementPower = 0;
+  managementPower = MAX_MANAGEMENT_POWER;
   pendingManagementJudgement = null;
   activeFlowType = null;
   activeFlowJudgement = null;
@@ -2354,18 +2535,23 @@ const resetGame = (countAsPlay = false, source = "resetGame") => {
   supplyLocked = false;
   supplyPhase = "idle";
   if (countAsPlay) {
-    saveData = saveManager.recordStageStart(saveData, STAGE_ID);
+    saveData = saveManager.recordStageStart(saveData, currentStageId);
   }
   const snapshot = engine.restart();
   placementAI.updateDesiredPiece(snapshot.cells);
   renderBoard(snapshot);
 };
 
-const startTraining = (source = "start-training") => {
-  resetGame(true, source);
+const startTraining = (source = "start-training", stageId: StageId = DEFAULT_STAGE_ID) => {
+  resetGame(true, source, stageId);
   showScreen("game");
   setGameState("countdown", source);
   void runStartCountdown();
+};
+
+const getNextStageId = (): StageId => {
+  const currentIndex = STAGE_CONFIGS.findIndex((stage) => stage.id === currentStageId);
+  return STAGE_CONFIGS[Math.min(STAGE_CONFIGS.length - 1, currentIndex + 1)]?.id ?? "stage1";
 };
 
 const returnToTitle = (source: string) => {
@@ -2380,6 +2566,7 @@ const returnToTitle = (source: string) => {
   clearStatusTimer();
   clearReplenishmentTimer();
   clearHintUnlockTimer();
+  clearSupplyDecisionTimer();
   clearEffectTimers();
   stopLastSpurtBgm();
   clearCharacterEvents();
@@ -2407,8 +2594,8 @@ const returnToTitle = (source: string) => {
   showScreen("title");
 };
 
-clearRestartButton?.addEventListener("click", () => startTraining("stageclear-restart"));
-clearNextButton?.addEventListener("click", () => startTraining("stageclear-next"));
+clearRestartButton?.addEventListener("click", () => startTraining("stageclear-restart", currentStageId));
+clearNextButton?.addEventListener("click", () => startTraining("stageclear-next", getNextStageId()));
 gameOverRestartButton?.addEventListener("click", () => startTraining("gameover-restart"));
 
 document.querySelectorAll<HTMLButtonElement>("[data-action]").forEach((button) => {
@@ -2418,7 +2605,10 @@ document.querySelectorAll<HTMLButtonElement>("[data-action]").forEach((button) =
         openStageScreen();
         break;
       case "start-training":
-        startTraining();
+        startTraining("start-training", DEFAULT_STAGE_ID);
+        break;
+      case "start-stage":
+        startTraining("start-stage", (button.dataset.stageId as StageId) ?? "stage1");
         break;
       case "open-records":
         openRecordsScreen();
