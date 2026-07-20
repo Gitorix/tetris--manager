@@ -17,7 +17,6 @@ const inventory = new Inventory();
 const placementAI: PlacementAI = new SafeAI();
 const saveManager = new SaveManager();
 const blockTypes = TETROMINO_ORDER;
-const STAGE_ID = "training1";
 const developmentControlsEnabled = false;
 const SHIPPING_DISPLAY_MS = 500;
 const RECEIVED_DISPLAY_MS = 500;
@@ -32,7 +31,6 @@ const MANAGEMENT_MAX_EFFECT_MS = 1800;
 const MANAGEMENT_SPEND_EFFECT_MS = 1200;
 const STAGE_CLEAR_EFFECT_MS = 2200;
 const LAST_SPURT_EFFECT_MS = 1900;
-const REPLENISH_INTERVAL = 5;
 const REPLENISH_NOTICE_MS = 2000;
 const TARGET_SCORE = 1000;
 const LAST_SPURT_REMAINING_SCORE = 100;
@@ -484,7 +482,7 @@ app.innerHTML = `
       <footer class="supply-area" aria-label="供給管理">
         <span class="replenishment-status" data-replenishment-status>
           <span class="replenishment-label" data-replenishment-label>🚚 補充</span>
-          <span class="replenishment-main" data-replenishment-main>あと${REPLENISH_INTERVAL}手</span>
+          <span class="replenishment-main" data-replenishment-main>あと${STAGE_CONFIGS[0].replenishmentInterval}手</span>
           <span class="replenishment-detail" data-replenishment-detail></span>
         </span>
         <div class="management-skill-panel" aria-label="管理力支援">
@@ -1152,6 +1150,7 @@ const renderClearPanel = (snapshot: TetrisSnapshot) => {
     return;
   }
 
+  const stage = getCurrentStage();
   const reportSummary = getTrainingReportSummary();
   clearPanel.hidden = !isStageClear || isGameOver || snapshot.isGameOver;
 
@@ -1197,6 +1196,18 @@ const renderClearPanel = (snapshot: TetrisSnapshot) => {
 
   if (safeAIComment) {
     safeAIComment.textContent = reportSummary.comment;
+  }
+
+  if (clearNextButton) {
+    const nextStageId = getNextStageId();
+    const hasNextStage = nextStageId !== currentStageId;
+    clearNextButton.hidden = false;
+    clearNextButton.disabled = !stage.isTraining && !hasNextStage;
+    clearNextButton.textContent = stage.isTraining
+      ? "本ステージへ"
+      : hasNextStage
+        ? "次へ"
+        : "完了";
   }
 };
 
@@ -2173,12 +2184,14 @@ const createStageResultRecord = (cleared: boolean): StageResultRecord => {
 };
 
 const saveStageResult = (cleared: boolean) => {
-  if (stageResultSaved || trainingReportEntries.length === 0) {
+  if (stageResultSaved || (!cleared && trainingReportEntries.length === 0)) {
     return;
   }
 
   saveData = saveManager.recordStageResult(saveData, createStageResultRecord(cleared));
   stageResultSaved = true;
+  renderStageScreen();
+  renderRecordsScreen();
 };
 
 const shouldClearStage = (snapshot: TetrisSnapshot) =>
@@ -2595,7 +2608,29 @@ const returnToTitle = (source: string) => {
 };
 
 clearRestartButton?.addEventListener("click", () => startTraining("stageclear-restart", currentStageId));
-clearNextButton?.addEventListener("click", () => startTraining("stageclear-next", getNextStageId()));
+clearNextButton?.addEventListener("click", () => {
+  if (getCurrentStage().isTraining) {
+    flowToken += 1;
+    clearStatusTimer();
+    clearReplenishmentTimer();
+    clearSupplyDecisionTimer();
+    clearEffectTimers();
+    stopLastSpurtBgm();
+    clearCharacterEvents();
+    isStageClear = false;
+    isPaused = false;
+    isExitConfirmOpen = false;
+    supplyLocked = false;
+    supplyPhase = "idle";
+    openStageScreen();
+    return;
+  }
+
+  const nextStageId = getNextStageId();
+  if (nextStageId !== currentStageId) {
+    startTraining("stageclear-next", nextStageId);
+  }
+});
 gameOverRestartButton?.addEventListener("click", () => startTraining("gameover-restart"));
 
 document.querySelectorAll<HTMLButtonElement>("[data-action]").forEach((button) => {
