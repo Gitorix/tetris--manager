@@ -35,7 +35,8 @@ const REPLENISH_NOTICE_MS = 2000;
 const WORLD_RANKER_TURN_GAP_MS = 90;
 const TARGET_SCORE = 1000;
 const LAST_SPURT_REMAINING_SCORE = 100;
-const MAX_MANAGEMENT_POWER = 100;
+const INITIAL_MANAGEMENT_POWER = 100;
+const MANAGEMENT_MILESTONE_POWER = 100;
 const MIN_MANAGEMENT_POWER = -100;
 const TIMEOUT_MANAGEMENT_PENALTY = -20;
 const MANAGEMENT_SKILL_COSTS = {
@@ -48,6 +49,12 @@ const DESIRED_PIECE_BONUS = 5;
 const SECOND_DESIRED_PIECE_BONUS = 2;
 const WORST_CHOICE_PENALTY = -10;
 const BALANCE_SUPPLY_BONUS = 10;
+const AI_SCORE_ADJUSTMENTS: Record<ManagementFeedbackKind, number> = {
+  best: 20,
+  second: 10,
+  neutral: 0,
+  worst: -10
+};
 
 type StageId = "training0" | "stage1" | "stage2" | "stage3" | "stage4" | "stage5" | "stage6" | "stage7";
 type StageConfig = {
@@ -58,6 +65,7 @@ type StageConfig = {
   replenishmentInterval: number;
   decisionTimeMs: number;
   hintLevel: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  requiredManagementPower: number | null;
 };
 
 const STAGE_CONFIGS: StageConfig[] = [
@@ -68,15 +76,16 @@ const STAGE_CONFIGS: StageConfig[] = [
     isTraining: true,
     replenishmentInterval: 7,
     decisionTimeMs: 14000,
-    hintLevel: 7
+    hintLevel: 7,
+    requiredManagementPower: null
   },
-  { id: "stage1", title: "本ステージ Stage1", shortTitle: "Stage1", isTraining: false, replenishmentInterval: 7, decisionTimeMs: 10000, hintLevel: 7 },
-  { id: "stage2", title: "本ステージ Stage2", shortTitle: "Stage2", isTraining: false, replenishmentInterval: 6, decisionTimeMs: 8500, hintLevel: 6 },
-  { id: "stage3", title: "本ステージ Stage3", shortTitle: "Stage3", isTraining: false, replenishmentInterval: 5, decisionTimeMs: 7000, hintLevel: 5 },
-  { id: "stage4", title: "本ステージ Stage4", shortTitle: "Stage4", isTraining: false, replenishmentInterval: 4, decisionTimeMs: 5500, hintLevel: 4 },
-  { id: "stage5", title: "本ステージ Stage5", shortTitle: "Stage5", isTraining: false, replenishmentInterval: 3, decisionTimeMs: 4200, hintLevel: 3 },
-  { id: "stage6", title: "本ステージ Stage6", shortTitle: "Stage6", isTraining: false, replenishmentInterval: 2, decisionTimeMs: 3200, hintLevel: 2 },
-  { id: "stage7", title: "本ステージ Stage7", shortTitle: "Stage7", isTraining: false, replenishmentInterval: 1, decisionTimeMs: 2200, hintLevel: 1 }
+  { id: "stage1", title: "本ステージ Stage1", shortTitle: "Stage1", isTraining: false, replenishmentInterval: 7, decisionTimeMs: 10000, hintLevel: 7, requiredManagementPower: 20 },
+  { id: "stage2", title: "本ステージ Stage2", shortTitle: "Stage2", isTraining: false, replenishmentInterval: 6, decisionTimeMs: 8500, hintLevel: 6, requiredManagementPower: 30 },
+  { id: "stage3", title: "本ステージ Stage3", shortTitle: "Stage3", isTraining: false, replenishmentInterval: 5, decisionTimeMs: 7000, hintLevel: 5, requiredManagementPower: 40 },
+  { id: "stage4", title: "本ステージ Stage4", shortTitle: "Stage4", isTraining: false, replenishmentInterval: 4, decisionTimeMs: 5500, hintLevel: 4, requiredManagementPower: 50 },
+  { id: "stage5", title: "本ステージ Stage5", shortTitle: "Stage5", isTraining: false, replenishmentInterval: 3, decisionTimeMs: 4200, hintLevel: 3, requiredManagementPower: 60 },
+  { id: "stage6", title: "本ステージ Stage6", shortTitle: "Stage6", isTraining: false, replenishmentInterval: 2, decisionTimeMs: 3200, hintLevel: 2, requiredManagementPower: 70 },
+  { id: "stage7", title: "本ステージ Stage7", shortTitle: "Stage7", isTraining: false, replenishmentInterval: 1, decisionTimeMs: 2200, hintLevel: 1, requiredManagementPower: 80 }
 ];
 const STAGES_BY_ID = new Map(STAGE_CONFIGS.map((stage) => [stage.id, stage]));
 const DEFAULT_STAGE_ID: StageId = "training0";
@@ -174,7 +183,7 @@ let replenishmentRequestTimer: number | null = null;
 let flowToken = 0;
 let continuousAIToken = 0;
 let currentStageId: StageId = DEFAULT_STAGE_ID;
-let managementPower = MAX_MANAGEMENT_POWER;
+let managementPower = INITIAL_MANAGEMENT_POWER;
 let pendingManagementJudgement: DesiredPieceSnapshot | null = null;
 let isStageClear = false;
 let isGameOver = false;
@@ -190,6 +199,11 @@ let replenishmentShipmentIndex = 0;
 let activeReplenishmentResult: ReplenishmentResult | null = null;
 let isReplenishmentRequestActive = false;
 let replenishmentRequestDeadline = 0;
+let replenishmentCountdownTimer: number | null = null;
+let suppliedBlockAwaitingUse: TetrominoType | null = null;
+let supplyButtonOrder: TetrominoType[] = [...blockTypes];
+let aiScoreAdjustment = 0;
+let gameOverReason = "管理人を解任されました";
 let trainingReportEntries: TrainingReportEntry[] = [];
 let unlockedHintThresholds = new Set<number>();
 let lastReplenishmentBubbleTurns: number | null = null;
@@ -334,6 +348,7 @@ app.innerHTML = `
               <span class="stage-card-row">担当AI：SafeAI</span>
               <span class="stage-card-row">補充間隔 ${stage.replenishmentInterval}</span>
               <span class="stage-card-row">判断時間 ${Math.round(stage.decisionTimeMs / 1000)}秒</span>
+              <span class="stage-card-row">必要管理力 ${stage.requiredManagementPower ?? "制限なし"}</span>
               <span class="stage-card-action">本ステージ開始</span>
             </button>
           `
@@ -368,7 +383,7 @@ app.innerHTML = `
         </div>
         <div class="status-item">
           <span class="status-label">管理力</span>
-          <span class="status-value" data-management-power>100 / 100</span>
+          <span class="status-value" data-management-power>100</span>
         </div>
         <div class="game-top-actions" aria-label="ゲーム操作">
           <button class="game-icon-button" type="button" data-action="pause-game" aria-label="一時停止">⏸</button>
@@ -421,8 +436,9 @@ app.innerHTML = `
           }).join("")}
         </div>
         <div class="countdown-overlay" data-countdown-overlay hidden></div>
+        <div class="replenishment-countdown" data-replenishment-countdown hidden aria-live="polite"></div>
         <div class="management-max-effect" data-management-max-effect hidden>
-          <span class="management-max-label">管理力 MAX！</span>
+          <span class="management-max-label">管理力 100突破！</span>
           <span class="effect-particles" aria-hidden="true">
             ${Array.from({ length: 12 }, (_, index) => `<span style="--particle-index:${index};"></span>`).join("")}
           </span>
@@ -444,10 +460,11 @@ app.innerHTML = `
           </span>
         </div>
         <section class="clear-panel" data-clear-panel hidden aria-label="ステージクリア">
-          <span class="clear-panel-subtitle">研修レポート</span>
-          <span class="report-rank" data-report-rank>総合ランク D</span>
-          <span class="report-rate" data-report-rate>第1候補一致率 0%</span>
-          <span class="clear-panel-result report-management" data-final-management-power>最終管理力 0 / 100</span>
+          <span class="clear-panel-subtitle">ステージリザルト</span>
+          <span class="report-rank" data-report-rank>ランク D</span>
+          <span class="report-rate" data-report-rate>結果 CLEAR</span>
+          <span class="clear-panel-result report-management" data-final-management-power>管理力 0</span>
+          <span class="clear-panel-result" data-required-management>必要管理力 制限なし</span>
           <div class="report-grid" aria-label="研修評価集計">
             <span class="report-item" data-report-perfect>Perfect（第1候補） 0</span>
             <span class="report-item" data-report-good>Good（第2候補） 0</span>
@@ -460,13 +477,13 @@ app.innerHTML = `
             <button class="clear-restart-button" type="button">もう一度</button>
             <button class="clear-next-button" type="button">次へ</button>
           </div>
-          <span class="safe-ai-comment" data-safe-ai-comment>供給の傾向を見直してみましょう。</span>
+          <span class="safe-ai-comment" data-safe-ai-comment>管理人としての判断が、世界ランカーを支えました。</span>
         </section>
         <section class="game-over-panel" data-game-over-panel hidden aria-label="ゲームオーバー">
           <span class="game-over-panel-title">管理終了</span>
-          <span class="game-over-panel-message">管理人を解任されました</span>
+          <span class="game-over-panel-message" data-game-over-message>管理人を解任されました</span>
           <span class="game-over-panel-result" data-game-over-final-score>最終スコア 0</span>
-          <span class="game-over-panel-result" data-game-over-final-management-power>最終管理力 0 / 100</span>
+          <span class="game-over-panel-result" data-game-over-final-management-power>最終管理力 0</span>
           <button class="game-over-restart-button" type="button">もう一度遊ぶ</button>
         </section>
         <section class="pause-panel" data-pause-panel hidden aria-label="一時停止メニュー">
@@ -562,6 +579,7 @@ const clearPanel = document.querySelector<HTMLElement>("[data-clear-panel]");
 const pausePanel = document.querySelector<HTMLElement>("[data-pause-panel]");
 const exitConfirmPanel = document.querySelector<HTMLElement>("[data-exit-confirm-panel]");
 const countdownOverlay = document.querySelector<HTMLDivElement>("[data-countdown-overlay]");
+const replenishmentCountdown = document.querySelector<HTMLDivElement>("[data-replenishment-countdown]");
 const managementMaxEffect = document.querySelector<HTMLDivElement>("[data-management-max-effect]");
 const managementSpendEffect = document.querySelector<HTMLDivElement>("[data-management-spend-effect]");
 const managementSpendLabel = document.querySelector<HTMLSpanElement>("[data-management-spend-label]");
@@ -570,6 +588,7 @@ const lastSpurtEffect = document.querySelector<HTMLDivElement>("[data-last-spurt
 const balanceBonusEffect = document.querySelector<HTMLDivElement>("[data-balance-bonus-effect]");
 const finalScore = document.querySelector<HTMLSpanElement>("[data-final-score]");
 const finalManagementPower = document.querySelector<HTMLSpanElement>("[data-final-management-power]");
+const requiredManagementPower = document.querySelector<HTMLSpanElement>("[data-required-management]");
 const reportTotal = document.querySelector<HTMLSpanElement>("[data-report-total]");
 const reportPerfect = document.querySelector<HTMLSpanElement>("[data-report-perfect]");
 const reportGood = document.querySelector<HTMLSpanElement>("[data-report-good]");
@@ -585,6 +604,7 @@ const gameOverFinalScore = document.querySelector<HTMLSpanElement>("[data-game-o
 const gameOverFinalManagementPower = document.querySelector<HTMLSpanElement>(
   "[data-game-over-final-management-power]"
 );
+const gameOverMessage = document.querySelector<HTMLSpanElement>("[data-game-over-message]");
 const gameOverRestartButton = document.querySelector<HTMLButtonElement>(".game-over-restart-button");
 const devControlButtons = Array.from(document.querySelectorAll<HTMLButtonElement>(".dev-control-button"));
 const supplyButtons = Array.from(document.querySelectorAll<HTMLButtonElement>(".supply-button"));
@@ -654,6 +674,16 @@ const sanitizeOperatorCrew = () => {
   });
 };
 
+const getEffectiveScore = (snapshot: TetrisSnapshot) => Math.max(0, snapshot.score + aiScoreAdjustment);
+
+const getManagementRank = (): TrainingRank => {
+  if (managementPower >= 95) return "S";
+  if (managementPower >= 80) return "A";
+  if (managementPower >= 60) return "B";
+  if (managementPower >= 40) return "C";
+  return "D";
+};
+
 const renderBoard = (snapshot: TetrisSnapshot) => {
   ensureBoardGrid();
   sanitizeOperatorCrew();
@@ -676,7 +706,7 @@ const renderBoard = (snapshot: TetrisSnapshot) => {
   });
 
   if (scoreValue) {
-    scoreValue.textContent = String(snapshot.score);
+    scoreValue.textContent = String(getEffectiveScore(snapshot));
   }
 
   if (stageTitleValue) {
@@ -688,7 +718,7 @@ const renderBoard = (snapshot: TetrisSnapshot) => {
   }
 
   if (managementPowerValue) {
-    managementPowerValue.textContent = `${managementPower} / ${MAX_MANAGEMENT_POWER}`;
+    managementPowerValue.textContent = String(managementPower);
   }
 
   if (gameOverText) {
@@ -934,7 +964,7 @@ const renderSupplyStatus = (snapshot: TetrisSnapshot) => {
   }
 
   if (snapshot.isGameOver || isGameOver) {
-    setSupplyStatus("× 管理終了", "管理人を解任されました", "停止中", "gameover");
+    setSupplyStatus("× 管理終了", gameOverReason, "停止中", "gameover");
     return;
   }
 
@@ -955,8 +985,13 @@ const renderSupplyStatus = (snapshot: TetrisSnapshot) => {
   }
 
   if (supplyPhase === "idle") {
-    if (snapshot.score >= TARGET_SCORE) {
-      setSupplyStatus("✓ 目標達成", "下から6段以内を目指してください", "目標達成", "target");
+    if (getEffectiveScore(snapshot) >= TARGET_SCORE) {
+      const required = getCurrentStage().requiredManagementPower;
+      const message =
+        required !== null && managementPower < required
+          ? `必要管理力 ${required} に届いていません`
+          : "クリア条件を確認中";
+      setSupplyStatus("✓ 目標達成", message, "目標達成", "target");
       return;
     }
 
@@ -989,8 +1024,9 @@ const renderStageProgress = (snapshot: TetrisSnapshot) => {
     return;
   }
 
-  if (snapshot.score < TARGET_SCORE) {
-    const remainingScore = TARGET_SCORE - snapshot.score;
+  const effectiveScore = getEffectiveScore(snapshot);
+  if (effectiveScore < TARGET_SCORE) {
+    const remainingScore = TARGET_SCORE - effectiveScore;
     if (remainingScore <= LAST_SPURT_REMAINING_SCORE) {
       showLastSpurtEffect();
     }
@@ -999,7 +1035,11 @@ const renderStageProgress = (snapshot: TetrisSnapshot) => {
     return;
   }
 
-  stageProgress.textContent = "クリアスコア到達！";
+  const requiredPower = getCurrentStage().requiredManagementPower;
+  stageProgress.textContent =
+    requiredPower !== null && managementPower < requiredPower
+      ? `管理力 ${requiredPower} 必要`
+      : "クリアスコア到達！";
   stageProgress.dataset.stageState = "arrange";
 };
 
@@ -1183,11 +1223,16 @@ const renderClearPanel = (snapshot: TetrisSnapshot) => {
   }
 
   if (finalScore) {
-    finalScore.textContent = `最終スコア ${snapshot.score}`;
+    finalScore.textContent = `Score ${getEffectiveScore(snapshot)}`;
   }
 
   if (finalManagementPower) {
-    finalManagementPower.textContent = `最終管理力 ${managementPower} / ${MAX_MANAGEMENT_POWER}`;
+    finalManagementPower.textContent = `Management ${managementPower}`;
+  }
+
+  if (requiredManagementPower) {
+    const required = stage.requiredManagementPower;
+    requiredManagementPower.textContent = required === null ? "Required 制限なし" : `Required ${required}`;
   }
 
   if (reportTotal) {
@@ -1211,11 +1256,11 @@ const renderClearPanel = (snapshot: TetrisSnapshot) => {
   }
 
   if (reportRate) {
-    reportRate.textContent = `第1候補一致率 ${reportSummary.matchRate}%`;
+    reportRate.textContent = "結果 CLEAR";
   }
 
   if (reportRank) {
-    reportRank.textContent = `総合ランク ${reportSummary.rank}`;
+    reportRank.textContent = `Rank ${reportSummary.rank}`;
   }
 
   if (safeAIComment) {
@@ -1245,12 +1290,15 @@ const renderGameOverPanel = (snapshot: TetrisSnapshot) => {
   gameOverPanel.hidden = !isGameOver || isStageClear;
 
   if (gameOverFinalScore) {
-    gameOverFinalScore.textContent = `最終スコア ${snapshot.score}`;
+    gameOverFinalScore.textContent = `最終スコア ${getEffectiveScore(snapshot)}`;
   }
 
   if (gameOverFinalManagementPower) {
-    gameOverFinalManagementPower.textContent =
-      `最終管理力 ${managementPower} / ${MAX_MANAGEMENT_POWER}`;
+    gameOverFinalManagementPower.textContent = `最終管理力 ${managementPower}`;
+  }
+
+  if (gameOverMessage) {
+    gameOverMessage.textContent = gameOverReason;
   }
 };
 
@@ -1306,6 +1354,54 @@ const clearReplenishmentRequestTimer = () => {
     window.clearTimeout(replenishmentRequestTimer);
     replenishmentRequestTimer = null;
   }
+};
+
+const clearReplenishmentCountdown = () => {
+  if (replenishmentCountdownTimer !== null) {
+    window.clearInterval(replenishmentCountdownTimer);
+    replenishmentCountdownTimer = null;
+  }
+
+  if (replenishmentCountdown) {
+    replenishmentCountdown.hidden = true;
+    replenishmentCountdown.textContent = "";
+  }
+
+  if (boardGrid) {
+    delete boardGrid.dataset.replenishmentRequest;
+    delete boardGrid.dataset.supplyUse;
+    delete boardGrid.dataset.supplyComplete;
+  }
+};
+
+const updateReplenishmentCountdown = () => {
+  if (!isReplenishmentRequestActive || !replenishmentCountdown) {
+    return;
+  }
+
+  const remainingSeconds = Math.max(0, replenishmentRequestDeadline - Date.now()) / 1000;
+  replenishmentCountdown.hidden = false;
+  replenishmentCountdown.textContent = remainingSeconds.toFixed(1);
+};
+
+const startReplenishmentCountdown = () => {
+  clearReplenishmentCountdown();
+  if (boardGrid) {
+    boardGrid.dataset.replenishmentRequest = "true";
+  }
+  updateReplenishmentCountdown();
+  replenishmentCountdownTimer = window.setInterval(updateReplenishmentCountdown, 100);
+};
+
+const flashSupplyComplete = () => {
+  if (!boardGrid) {
+    return;
+  }
+
+  boardGrid.dataset.supplyComplete = "true";
+  scheduleEffectTimer(() => {
+    delete boardGrid.dataset.supplyComplete;
+  }, 420);
 };
 
 const stopContinuousAI = () => {
@@ -1717,10 +1813,7 @@ const getDesiredPieceSnapshot = (): DesiredPieceSnapshot => ({
 
 const addManagementPower = (amount: number) => {
   const before = managementPower;
-  managementPower = Math.max(
-    MIN_MANAGEMENT_POWER,
-    Math.min(MAX_MANAGEMENT_POWER, managementPower + amount)
-  );
+  managementPower = Math.max(MIN_MANAGEMENT_POWER, managementPower + amount);
   const unlockedThreshold = AI_HINT_UNLOCK_THRESHOLDS.find(
     (threshold) =>
       before < threshold && managementPower >= threshold && !unlockedHintThresholds.has(threshold)
@@ -1735,11 +1828,15 @@ const addManagementPower = (amount: number) => {
     showManagementSpendEffect(managementPower - before);
   }
 
-  if (managementPower < MAX_MANAGEMENT_POWER) {
+  if (managementPower < MANAGEMENT_MILESTONE_POWER) {
     hasShownManagementMax = false;
   }
 
-  if (before < MAX_MANAGEMENT_POWER && managementPower === MAX_MANAGEMENT_POWER && !hasShownManagementMax) {
+  if (
+    before < MANAGEMENT_MILESTONE_POWER &&
+    managementPower >= MANAGEMENT_MILESTONE_POWER &&
+    !hasShownManagementMax
+  ) {
     showManagementMaxEffect();
   }
 
@@ -1814,10 +1911,41 @@ const applySingleReplenishment = (type: TetrominoType, source: "manual" | "timeo
   };
 };
 
+const shouldShuffleSupplyButtons = () => ["stage5", "stage6", "stage7"].includes(currentStageId);
+
+const shuffleSupplyButtonsForRequest = () => {
+  if (!shouldShuffleSupplyButtons()) {
+    supplyButtonOrder = [...blockTypes];
+    return;
+  }
+
+  const nextOrder = [...blockTypes];
+  for (let index = nextOrder.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [nextOrder[index], nextOrder[swapIndex]] = [nextOrder[swapIndex], nextOrder[index]];
+  }
+  supplyButtonOrder = nextOrder;
+};
+
+const renderSupplyButtonOrder = () => {
+  const supplyButtonContainer = supplyButtons[0]?.parentElement;
+  if (!supplyButtonContainer) {
+    return;
+  }
+
+  supplyButtonOrder.forEach((type) => {
+    const button = supplyButtons.find((candidate) => candidate.dataset.supplyType === type);
+    if (button) {
+      supplyButtonContainer.append(button);
+    }
+  });
+};
+
 const finishReplenishmentRequest = () => {
   isReplenishmentRequestActive = false;
   replenishmentRequestDeadline = 0;
   clearReplenishmentRequestTimer();
+  clearReplenishmentCountdown();
 };
 
 const showReplenishmentResult = (result: ReplenishmentResult) => {
@@ -1879,6 +2007,9 @@ const startReplenishmentRequest = () => {
   isReplenishmentRequestActive = true;
   replenishmentRequestDeadline = Date.now() + getCurrentStage().decisionTimeMs;
   clearReplenishmentRequestTimer();
+  shuffleSupplyButtonsForRequest();
+  renderSupplyButtonOrder();
+  startReplenishmentCountdown();
   replenishmentRequestTimer = window.setTimeout(handleReplenishmentTimeout, getCurrentStage().decisionTimeMs);
   characterEvents.notify("minton", "補給お願いします！", 1500);
   setSupplyStatus("⚡ 補給要求", "補給ブロックを選択してください", "AIプレイ継続中", "replenish");
@@ -1900,17 +2031,15 @@ const chooseReplenishment = (type: TetrominoType) => {
 
   const desiredBeforeSupply = getDesiredPieceSnapshot();
   finishReplenishmentRequest();
-  evaluateSupplyPattern(type);
-  if (isGameOver) {
-    return;
-  }
-
   const feedback = applyManagementPowerReward(type, desiredBeforeSupply);
   recordTrainingReportEntry(type, desiredBeforeSupply, feedback);
   if (feedback) {
+    aiScoreAdjustment += AI_SCORE_ADJUSTMENTS[feedback.kind];
     showManagementFeedback(feedback);
   }
+  suppliedBlockAwaitingUse = type;
   showReplenishmentResult(applySingleReplenishment(type, "manual"));
+  flashSupplyComplete();
   setSupplyStatus("🚚 補給完了", `${type}を補給しました`, "AIプレイ継続中", "replenish");
   renderBoard(engine.getSnapshot());
 };
@@ -1925,7 +2054,7 @@ const handlePlacementCount = () => {
   startReplenishmentRequest();
 };
 
-const enterGameOver = (snapshot: TetrisSnapshot) => {
+const enterGameOver = (snapshot: TetrisSnapshot, reason = "管理人を解任されました") => {
   if (isStageClear || gameState === "stageclear" || gameState !== "playing") {
     return;
   }
@@ -1938,6 +2067,7 @@ const enterGameOver = (snapshot: TetrisSnapshot) => {
   clearReplenishmentTimer();
   clearSupplyDecisionTimer();
   clearReplenishmentRequestTimer();
+  clearReplenishmentCountdown();
   isReplenishmentRequestActive = false;
   activeReplenishmentResult = null;
   stopFeedbackDisplay();
@@ -1946,6 +2076,7 @@ const enterGameOver = (snapshot: TetrisSnapshot) => {
   supplyLocked = false;
   supplyPhase = "gameover";
   isGameOver = true;
+  gameOverReason = reason;
   setGameState("gameover", "enterGameOver");
   activeFlowType = null;
   activeFlowJudgement = null;
@@ -2076,14 +2207,6 @@ const recordTrainingReportEntry = (
   });
 };
 
-const getTrainingRank = (matchRate: number): TrainingReportSummary["rank"] => {
-  if (matchRate >= 80) return "S";
-  if (matchRate >= 65) return "A";
-  if (matchRate >= 50) return "B";
-  if (matchRate >= 35) return "C";
-  return "D";
-};
-
 const getSafeAIComment = (rank: TrainingReportSummary["rank"]) => {
   switch (rank) {
     case "S":
@@ -2106,7 +2229,7 @@ const getTrainingReportSummary = (): TrainingReportSummary => {
   const miss = trainingReportEntries.filter((entry) => entry.evaluation === "Miss").length;
   const total = trainingReportEntries.length;
   const matchRate = total === 0 ? 0 : Math.round((perfect / total) * 100);
-  const rank = getTrainingRank(matchRate);
+  const rank = getManagementRank();
 
   return {
     total,
@@ -2233,6 +2356,7 @@ const pauseGame = () => {
   clearReplenishmentTimer();
   clearSupplyDecisionTimer();
   clearReplenishmentRequestTimer();
+  clearReplenishmentCountdown();
   renderBoard(snapshot);
 };
 
@@ -2252,6 +2376,7 @@ const resumeGame = () => {
   if (isReplenishmentRequestActive) {
     replenishmentRequestDeadline = Date.now() + getCurrentStage().decisionTimeMs;
     clearReplenishmentRequestTimer();
+    startReplenishmentCountdown();
     replenishmentRequestTimer = window.setTimeout(handleReplenishmentTimeout, getCurrentStage().decisionTimeMs);
   }
 
@@ -2310,6 +2435,7 @@ const openExitConfirm = () => {
   clearReplenishmentTimer();
   clearSupplyDecisionTimer();
   clearReplenishmentRequestTimer();
+  clearReplenishmentCountdown();
   renderBoard(snapshot);
 };
 
@@ -2343,7 +2469,7 @@ const createStageResultRecord = (cleared: boolean): StageResultRecord => {
     rank: summary.rank as TrainingRank,
     matchRate: summary.matchRate,
     managementPower,
-    score: engine.getSnapshot().score,
+    score: getEffectiveScore(engine.getSnapshot()),
     miss: summary.miss
   };
 };
@@ -2359,12 +2485,20 @@ const saveStageResult = (cleared: boolean) => {
   renderRecordsScreen();
 };
 
+const hasReachedClearScore = (snapshot: TetrisSnapshot) => getEffectiveScore(snapshot) >= TARGET_SCORE;
+
+const hasRequiredManagementPower = () => {
+  const required = getCurrentStage().requiredManagementPower;
+  return required === null || managementPower >= required;
+};
+
 const shouldClearStage = (snapshot: TetrisSnapshot) =>
   gameState === "playing" &&
   !isStageClear &&
   !isGameOver &&
   !isCountdownActive &&
-  snapshot.score >= TARGET_SCORE;
+  hasReachedClearScore(snapshot) &&
+  hasRequiredManagementPower();
 
 const runAction = (action: string) => {
   if (!developmentControlsEnabled) {
@@ -2454,6 +2588,15 @@ const completePlacement = (
   activeFlowJudgement = null;
   placementAI.updateDesiredPiece(snapshot.cells);
 
+  if (hasReachedClearScore(snapshot) && !hasRequiredManagementPower()) {
+    const required = getCurrentStage().requiredManagementPower;
+    enterGameOver(
+      snapshot,
+      required === null ? "ステージ条件を満たせませんでした" : `必要管理力 ${required} に届きませんでした`
+    );
+    return;
+  }
+
   if (shouldClearStage(snapshot)) {
     stageClearExecutionCount += 1;
     logDebug("[StageClear] count:", stageClearExecutionCount, "score:", snapshot.score);
@@ -2462,6 +2605,7 @@ const completePlacement = (
     activeReplenishmentResult = null;
     clearReplenishmentTimer();
     clearReplenishmentRequestTimer();
+    clearReplenishmentCountdown();
     isReplenishmentRequestActive = false;
     stopContinuousAI();
     supplyPhase = "idle";
@@ -2644,11 +2788,23 @@ const runContinuousAI = async (token: number) => {
     return;
   }
 
+  const isUsingPlayerSuppliedBlock = suppliedBlockAwaitingUse === type;
+  if (isUsingPlayerSuppliedBlock && boardGrid) {
+    boardGrid.dataset.supplyUse = "true";
+  }
+
   const turnToken = ++flowToken;
   supplyPhase = "placement";
   activeFlowType = type;
   activeFlowJudgement = null;
   await startSafeAIPlacement(type, turnToken, null);
+
+  if (isUsingPlayerSuppliedBlock) {
+    suppliedBlockAwaitingUse = null;
+    if (boardGrid) {
+      delete boardGrid.dataset.supplyUse;
+    }
+  }
 
   if (token === continuousAIToken && gameState === "playing" && !isStageClear && !isGameOver) {
     supplyLocked = false;
@@ -2751,6 +2907,7 @@ const resetGame = (countAsPlay = false, source = "resetGame", stageId: StageId =
   clearHintUnlockTimer();
   clearSupplyDecisionTimer();
   clearReplenishmentRequestTimer();
+  clearReplenishmentCountdown();
   clearEffectTimers();
   stopContinuousAI();
   stopLastSpurtBgm();
@@ -2770,7 +2927,7 @@ const resetGame = (countAsPlay = false, source = "resetGame", stageId: StageId =
   hideAllEffects();
   delete document.body.dataset.lastSpurt;
   inventory.reset();
-  managementPower = MAX_MANAGEMENT_POWER;
+  managementPower = INITIAL_MANAGEMENT_POWER;
   pendingManagementJudgement = null;
   activeFlowType = null;
   activeFlowJudgement = null;
@@ -2791,12 +2948,17 @@ const resetGame = (countAsPlay = false, source = "resetGame", stageId: StageId =
   consecutiveSupplyCount = 0;
   balanceSupplyTypes = new Set<TetrominoType>();
   activeReplenishmentResult = null;
+  suppliedBlockAwaitingUse = null;
+  supplyButtonOrder = [...blockTypes];
+  aiScoreAdjustment = 0;
+  gameOverReason = "管理人を解任されました";
   trainingReportEntries = [];
   unlockedHintThresholds = new Set<number>();
   lastReplenishmentBubbleTurns = null;
   stageResultSaved = false;
   supplyLocked = false;
   supplyPhase = "idle";
+  renderSupplyButtonOrder();
   if (countAsPlay) {
     saveData = saveManager.recordStageStart(saveData, currentStageId);
   }
@@ -2831,6 +2993,7 @@ const returnToTitle = (source: string) => {
   clearHintUnlockTimer();
   clearSupplyDecisionTimer();
   clearReplenishmentRequestTimer();
+  clearReplenishmentCountdown();
   clearEffectTimers();
   stopContinuousAI();
   stopLastSpurtBgm();

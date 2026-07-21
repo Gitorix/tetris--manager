@@ -995,6 +995,7 @@ body {
 }
 
 .countdown-overlay,
+.replenishment-countdown,
 .management-max-effect,
 .management-spend-effect,
 .stage-clear-effect,
@@ -1009,6 +1010,7 @@ body {
 }
 
 .countdown-overlay[hidden],
+.replenishment-countdown[hidden],
 .management-max-effect[hidden],
 .management-spend-effect[hidden],
 .stage-clear-effect[hidden],
@@ -1027,6 +1029,58 @@ body {
     0 0 18px rgba(103, 232, 249, 0.8),
     0 0 42px rgba(134, 239, 172, 0.34);
   animation: countdown-pop 620ms ease-out both;
+}
+
+.replenishment-countdown {
+  inset: 10px auto auto 50%;
+  z-index: 16;
+  min-width: 82px;
+  padding: 6px 12px;
+  border: 1px solid rgba(103, 232, 249, 0.82);
+  border-radius: var(--radius-pill);
+  background: rgba(2, 6, 23, 0.82);
+  color: #e0f2fe;
+  font-size: clamp(22px, 6vw, 34px);
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  transform: translateX(-50%);
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.38);
+}
+
+.board-grid[data-replenishment-request="true"] {
+  animation: replenishment-board-pulse 920ms ease-in-out infinite;
+}
+
+.board-grid[data-supply-complete="true"] {
+  animation: supply-complete-flash 420ms ease-out both;
+}
+
+.board-grid[data-supply-use="true"] {
+  animation: supply-use-pulse 460ms ease-in-out infinite;
+}
+
+@keyframes replenishment-board-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px rgba(103, 232, 249, 0.25), var(--glow-cyan), var(--shadow-board);
+  }
+
+  50% {
+    box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.64), 0 0 28px rgba(34, 211, 238, 0.54), var(--shadow-board);
+  }
+}
+
+@keyframes supply-complete-flash {
+  0% { filter: brightness(1); }
+  45% { filter: brightness(1.42) saturate(1.24); }
+  100% { filter: brightness(1); }
+}
+
+@keyframes supply-use-pulse {
+  0%,
+  100% { box-shadow: 0 0 0 2px rgba(134, 239, 172, 0.48), var(--glow-cyan), var(--shadow-board); }
+  50% { box-shadow: 0 0 0 4px rgba(134, 239, 172, 0.94), 0 0 32px rgba(74, 222, 128, 0.58), var(--shadow-board); }
 }
 
 .countdown-overlay[data-countdown-state="start"] {
