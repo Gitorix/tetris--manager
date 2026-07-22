@@ -222,6 +222,7 @@ let stageClearExecutionCount = 0;
 let gameOverExecutionCount = 0;
 let resetExecutionCount = 0;
 let countdownStartCount = 0;
+let rulesReturnTarget: "title" | "pause" = "title";
 
 const getCurrentStage = () => STAGES_BY_ID.get(currentStageId) ?? STAGE_CONFIGS[0];
 
@@ -317,7 +318,7 @@ app.innerHTML = `
         </figure>
       </div>
       <div class="title-actions">
-        <button class="title-action-button title-action-button-primary" type="button" data-action="start-training">研修を始める</button>
+        <button class="title-action-button title-action-button-primary" type="button" data-action="open-rules">研修を始める</button>
         <button class="title-action-button title-action-button-secondary" type="button" data-action="open-stage">ステージ選択</button>
         <button class="title-action-button title-action-button-secondary" type="button" data-action="open-records">記録を見る</button>
       </div>
@@ -355,6 +356,69 @@ app.innerHTML = `
         )
         .join("")}
       <button class="title-action-button title-action-button-secondary" type="button" data-action="back-title">タイトルへ戻る</button>
+    </section>
+
+    <section class="rules-screen" data-screen="rules" hidden aria-label="ルールブック">
+      <div class="screen-heading rules-heading">
+        <span class="title-kicker">MANAGER FIELD GUIDE</span>
+        <h2>ルールブック</h2>
+        <p>世界ランカーを支える管理人の仕事</p>
+      </div>
+      <div class="rules-hero">
+        <div class="rules-hero-copy">
+          <span class="rules-hero-label">あなたの役割</span>
+          <strong>ブロックを供給して、<br />最高のプレイ環境を整える</strong>
+          <span>世界ランカーは、あなたを待たずにプレイを続けます。</span>
+        </div>
+        <img class="rules-hero-character" src="${mistonUrl}" alt="" decoding="async" />
+      </div>
+      <div class="rules-flow" aria-label="ゲームの流れ">
+        <article class="rules-card">
+          <span class="rules-card-number">01</span>
+          <span class="rules-piece-icon rules-piece-icon-i" aria-hidden="true">
+            <i data-block="I"></i><i data-block="I"></i><i data-block="I"></i><i data-block="I"></i>
+          </span>
+          <h3>盤面を観察</h3>
+          <p>AIは自動でブロックを配置し、ラインを消去します。</p>
+        </article>
+        <article class="rules-card">
+          <span class="rules-card-number">02</span>
+          <span class="rules-piece-icon rules-piece-icon-t" aria-hidden="true">
+            <i data-block="T"></i><i data-block="T"></i><i data-block="T"></i><i data-block="T"></i>
+          </span>
+          <h3>補給要求に対応</h3>
+          <p>要求が出たら、制限時間内に必要なブロックを選びます。</p>
+        </article>
+        <article class="rules-card">
+          <span class="rules-card-number">03</span>
+          <span class="rules-piece-icon rules-piece-icon-o" aria-hidden="true">
+            <i data-block="O"></i><i data-block="O"></i><i data-block="O"></i><i data-block="O"></i>
+          </span>
+          <h3>判断を積み重ねる</h3>
+          <p>良い供給ほど管理力が上がり、ステージ達成へ近づきます。</p>
+        </article>
+      </div>
+      <div class="rules-quick-grid">
+        <article class="rules-quick-card">
+          <span class="rules-quick-icon">⚡</span>
+          <div><strong>補給要求中も停止しない</strong><span>AIはプレイを続けています。画面のカウントダウンを見て素早く供給。</span></div>
+        </article>
+        <article class="rules-quick-card">
+          <span class="rules-quick-icon">◎</span>
+          <div><strong>管理力は判断の評価</strong><span>◎ +5 / ○ +2 / △ ±0 / × -10。時間切れは -20 です。</span></div>
+        </article>
+        <article class="rules-quick-card">
+          <span class="rules-quick-icon">🚚</span>
+          <div><strong>在庫切れでもゲームは継続</strong><span>緊急ランダム補給が行われます。管理力 -20 でプレイは止まりません。</span></div>
+        </article>
+      </div>
+      <div class="rules-piece-strip" aria-label="7種類のブロック">
+        ${blockTypes.map((type) => `<span class="rules-piece-chip" data-block="${type}">${type}</span>`).join("")}
+      </div>
+      <div class="rules-actions">
+        <button class="title-action-button title-action-button-primary" type="button" data-action="rules-stage">ステージを選ぶ</button>
+        <button class="title-action-button title-action-button-secondary" type="button" data-action="back-rules">戻る</button>
+      </div>
     </section>
 
     <section class="records-screen" data-screen="records" hidden aria-label="記録画面">
@@ -488,6 +552,7 @@ app.innerHTML = `
         </section>
         <section class="pause-panel" data-pause-panel hidden aria-label="一時停止メニュー">
           <span class="pause-panel-title">一時停止</span>
+          <button class="pause-menu-button" type="button" data-action="open-rules-from-pause">📖 ルールブック</button>
           <button class="pause-menu-button" type="button" data-action="resume-game">▶ 再開</button>
           <button class="pause-menu-button" type="button" data-action="restart-from-pause">🔄 リスタート</button>
           <button class="pause-menu-button" type="button" data-action="title-from-pause">🏠 タイトルへ戻る</button>
@@ -2243,7 +2308,7 @@ const getTrainingReportSummary = (): TrainingReportSummary => {
   };
 };
 
-const showScreen = (screenName: "title" | "stage" | "records" | "game") => {
+const showScreen = (screenName: "title" | "stage" | "records" | "rules" | "game") => {
   screens.forEach((screen) => {
     screen.hidden = screen.dataset.screen !== screenName;
   });
@@ -2333,6 +2398,21 @@ const openStageScreen = () => {
   saveData = saveManager.markFirstLaunch(saveData);
   renderStageScreen();
   showScreen("stage");
+};
+
+const openRulesScreen = (returnTarget: "title" | "pause" = "title") => {
+  rulesReturnTarget = returnTarget;
+  showScreen("rules");
+};
+
+const closeRulesScreen = () => {
+  if (rulesReturnTarget === "pause") {
+    showScreen("game");
+    renderBoard(engine.getSnapshot());
+    return;
+  }
+
+  showScreen("title");
 };
 
 const openRecordsScreen = () => {
@@ -3039,6 +3119,15 @@ document.querySelectorAll<HTMLButtonElement>("[data-action]").forEach((button) =
       case "open-stage":
         openStageScreen();
         break;
+      case "open-rules":
+        openRulesScreen("title");
+        break;
+      case "rules-stage":
+        openStageScreen();
+        break;
+      case "open-rules-from-pause":
+        openRulesScreen("pause");
+        break;
       case "start-training":
         startTraining("start-training", DEFAULT_STAGE_ID);
         break;
@@ -3050,6 +3139,9 @@ document.querySelectorAll<HTMLButtonElement>("[data-action]").forEach((button) =
         break;
       case "back-title":
         openTitleScreen();
+        break;
+      case "back-rules":
+        closeRulesScreen();
         break;
       case "return-title":
         returnToTitle("title-screen");
