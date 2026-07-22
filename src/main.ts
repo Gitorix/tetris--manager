@@ -223,6 +223,7 @@ let gameOverExecutionCount = 0;
 let resetExecutionCount = 0;
 let countdownStartCount = 0;
 let rulesReturnTarget: "title" | "pause" = "title";
+let isHintPauseOpen = false;
 
 const getCurrentStage = () => STAGES_BY_ID.get(currentStageId) ?? STAGE_CONFIGS[0];
 
@@ -329,6 +330,7 @@ app.innerHTML = `
       <div class="screen-heading">
         <span class="title-kicker">研修一覧</span>
         <h2>研修一覧</h2>
+        <p>新人管理人研修①はいつでもプレイできます。記録には反映されません。</p>
       </div>
       <button class="stage-card stage-card-active" type="button" data-action="start-training">
         <span class="stage-card-title">新人管理人研修①</span>
@@ -412,6 +414,138 @@ app.innerHTML = `
           <div><strong>在庫切れでもゲームは継続</strong><span>緊急ランダム補給が行われます。管理力 -20 でプレイは止まりません。</span></div>
         </article>
       </div>
+      <section class="rules-section" aria-labelledby="rules-screen-guide-title">
+        <div class="rules-section-heading">
+          <span class="rules-hero-label">SCREEN GUIDE</span>
+          <h3 id="rules-screen-guide-title">プレイ中の画面の見方</h3>
+          <p>ゲームは止まりません。盤面を見ながら、必要な情報を順番に確認します。</p>
+        </div>
+        <div class="rules-screen-guide">
+          <div class="rules-game-preview" aria-label="ゲーム画面のイメージ">
+            <div class="rules-preview-status">
+              <span><b class="rules-preview-marker">1</b> 📦 自動プレイ中</span>
+              <strong><b class="rules-preview-marker">1</b> スコア 800</strong>
+              <span><b class="rules-preview-marker">1</b> 管理力 <b>70 / 100</b></span>
+            </div>
+            <div class="rules-preview-main">
+              <div class="rules-preview-board" aria-hidden="true">
+                <span class="rules-board-marker">2</span>
+                <span class="rules-preview-piece rules-preview-piece-i"></span>
+                <span class="rules-preview-piece rules-preview-piece-t"></span>
+                <span class="rules-preview-piece rules-preview-piece-o"></span>
+                <span class="rules-preview-line"></span>
+              </div>
+              <div class="rules-preview-replenishment">
+                <strong><b class="rules-preview-marker">3</b> 🚚 補充</strong>
+                <b>あと3手</b>
+                <span>I便</span>
+                <em>I +3</em>
+              </div>
+            </div>
+            <div class="rules-preview-bottom">
+              <span><b class="rules-preview-marker">5</b> AIヒント 30</span>
+              <span><b class="rules-preview-marker">5</b> 緊急補充 20</span>
+              <span><b class="rules-preview-marker">5</b> 在庫分析 10</span>
+              <div class="rules-preview-inventory">
+                <b class="rules-inventory-marker">4</b>
+                <i data-block="I">×3</i><i data-block="O">×2</i><i data-block="T">×2</i>
+                <i data-block="L">×4</i><i data-block="J">×4</i><i data-block="S">×5</i><i data-block="Z">×2</i>
+              </div>
+            </div>
+          </div>
+          <div class="rules-screen-points">
+            <article class="rules-detail-card">
+              <strong><b class="rules-guide-marker">1</b> 上部ステータス</strong>
+              <p>ステージ・スコア・目標・管理力を確認。</p>
+            </article>
+            <article class="rules-detail-card">
+              <strong><b class="rules-guide-marker">2</b> 盤面と点灯</strong>
+              <p>10×20盤面はAIが操作。要求中は外周が点滅し、補給完了・供給ブロック使用時に光ります。</p>
+            </article>
+            <article class="rules-detail-card">
+              <strong><b class="rules-guide-marker">3</b> 補充タイマー</strong>
+              <p>「あと○手」で次回便を予告。「補給要求」の秒数内に供給します。</p>
+            </article>
+            <article class="rules-detail-card">
+              <strong><b class="rules-guide-marker">4</b> Stage5以降</strong>
+              <p>要求ごとにボタン順が変化。位置ではなく形と在庫数を見て選びます。</p>
+            </article>
+            <article class="rules-detail-card">
+              <strong><b class="rules-guide-marker">5</b> 下部の操作エリア</strong>
+              <p>上段は管理力スキル、下段は7種類の在庫カードです。使いたい機能・ブロックをここから選びます。</p>
+            </article>
+          </div>
+        </div>
+      </section>
+      <section class="rules-info-grid" aria-label="クリア条件と管理力">
+        <article class="rules-info-card rules-clear-guide">
+          <span class="rules-quick-icon">✓</span>
+          <div>
+            <h3>クリア条件</h3>
+            <p>スコアが<strong>1,000点以上</strong>になり、さらにステージの必要管理力を満たすとクリアです。スコアだけではクリアになりません。</p>
+            <ul>
+              <li>研修：必要管理力なし</li>
+              <li>Stage1〜7：必要管理力 20 / 30 / 40 / 50 / 60 / 70 / 80</li>
+              <li>管理力が -100 に到達：ゲームオーバー</li>
+            </ul>
+          </div>
+        </article>
+        <article class="rules-info-card">
+          <span class="rules-quick-icon">◎</span>
+          <div>
+            <h3>管理力</h3>
+            <p>管理人の補給判断を表す値です。開始時は100、下限は-100です。AIのライン消去では変化せず、供給判断で増減します。</p>
+            <div class="rules-feedback-list">
+              <span>◎ 最適な供給 <b>+5</b></span>
+              <span>○ 良い供給 <b>+2</b></span>
+              <span>△ 普通 <b>±0</b></span>
+              <span>× 悪い供給 <b>-10</b></span>
+              <span>時間切れ・在庫切れ <b>-20</b></span>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section class="rules-section" aria-labelledby="rules-supply-title">
+        <div class="rules-section-heading">
+          <span class="rules-hero-label">SUPPLY ROOM</span>
+          <h3 id="rules-supply-title">在庫と補給のルール</h3>
+        </div>
+        <div class="rules-supply-guide">
+          <article class="rules-detail-card">
+            <strong>在庫とは</strong>
+            <p>画面下の④の7カードが在庫です。形と数を見て押すとAIへ供給。在庫0は選べません。</p>
+          </article>
+          <article class="rules-detail-card">
+            <strong>補充便</strong>
+            <p>ステージごとの間隔で便が到着。研修・Stage1は7手、Stage2以降は6〜1手。内容は事前表示され、上限超過分は増えません。</p>
+          </article>
+          <article class="rules-detail-card">
+            <strong>補給要求に間に合わないとき</strong>
+            <p>AIは止まりません。時間切れ・在庫切れは管理力-20、ランダム1個を補給して継続します。</p>
+          </article>
+        </div>
+      </section>
+      <section class="rules-section" aria-labelledby="rules-skills-title">
+        <div class="rules-section-heading">
+          <span class="rules-hero-label">MANAGEMENT SKILLS</span>
+          <h3 id="rules-skills-title">管理力を使う特殊能力</h3>
+          <p>ゲーム画面下部のボタンを押して使用します。管理力が足りないと実行できません。</p>
+        </div>
+        <div class="rules-skill-grid">
+          <article class="rules-skill-card">
+            <strong>AIヒント</strong><b>-30</b>
+            <p>ヒント表示中は一時停止。<strong>OK</strong>で続きを再開します。</p>
+          </article>
+          <article class="rules-skill-card">
+            <strong>緊急補充</strong><b>-20</b>
+            <p>次の補充便をすぐ到着させます。内容と在庫を確認できます。</p>
+          </article>
+          <article class="rules-skill-card">
+            <strong>在庫分析</strong><b>-10</b>
+            <p>最少在庫や在庫0を確認。次の供給計画に使います。</p>
+          </article>
+        </div>
+      </section>
       <div class="rules-piece-strip" aria-label="7種類のブロック">
         ${blockTypes.map((type) => `<span class="rules-piece-chip" data-block="${type}">${type}</span>`).join("")}
       </div>
@@ -557,6 +691,13 @@ app.innerHTML = `
           <button class="pause-menu-button" type="button" data-action="restart-from-pause">🔄 リスタート</button>
           <button class="pause-menu-button" type="button" data-action="title-from-pause">🏠 タイトルへ戻る</button>
         </section>
+        <section class="hint-pause-panel" data-hint-pause-panel hidden aria-label="ミストンのヒント">
+          <img class="hint-pause-character" src="${mistonUrl}" alt="" decoding="async" />
+          <span class="hint-pause-title">ミストンのヒント</span>
+          <span class="hint-pause-message" data-hint-pause-message>盤面をよく見て供給しましょう。</span>
+          <span class="hint-pause-note">ヒント表示中はプレイを一時停止しています</span>
+          <button class="hint-pause-ok-button" type="button" data-action="hint-ok-resume">OK</button>
+        </section>
         <section class="exit-confirm-panel" data-exit-confirm-panel hidden aria-label="終了確認">
           <span class="exit-confirm-title">ゲームを終了しますか？</span>
           <span class="exit-confirm-message">現在のスコアを保存してタイトルへ戻ります。</span>
@@ -642,6 +783,8 @@ const managementFeedbackMessage = document.querySelector<HTMLSpanElement>("[data
 const gameOverText = document.querySelector<HTMLSpanElement>(".game-over-text");
 const clearPanel = document.querySelector<HTMLElement>("[data-clear-panel]");
 const pausePanel = document.querySelector<HTMLElement>("[data-pause-panel]");
+const hintPausePanel = document.querySelector<HTMLElement>("[data-hint-pause-panel]");
+const hintPauseMessage = document.querySelector<HTMLSpanElement>("[data-hint-pause-message]");
 const exitConfirmPanel = document.querySelector<HTMLElement>("[data-exit-confirm-panel]");
 const countdownOverlay = document.querySelector<HTMLDivElement>("[data-countdown-overlay]");
 const replenishmentCountdown = document.querySelector<HTMLDivElement>("[data-replenishment-countdown]");
@@ -826,6 +969,7 @@ const renderBoard = (snapshot: TetrisSnapshot) => {
   renderManagementSkillButtons(snapshot);
   renderSupplyStatus(snapshot);
   renderPauseMenu();
+  renderHintPausePanel();
   renderExitConfirm();
   syncSupplyDecisionTimer(snapshot);
 };
@@ -1009,6 +1153,11 @@ const setSupplyStatus = (
 const renderSupplyStatus = (snapshot: TetrisSnapshot) => {
   if (isExitConfirmOpen) {
     setSupplyStatus("🚪 終了確認", "ゲームを終了しますか？", "確認中", "paused");
+    return;
+  }
+
+  if (isHintPauseOpen) {
+    setSupplyStatus("💡 ミストンのヒント", hintPauseMessage?.textContent ?? "ヒントを確認してください", "停止中", "paused");
     return;
   }
 
@@ -1369,7 +1518,13 @@ const renderGameOverPanel = (snapshot: TetrisSnapshot) => {
 
 const renderPauseMenu = () => {
   if (pausePanel) {
-    pausePanel.hidden = !isPaused || isExitConfirmOpen || isStageClear || isGameOver;
+    pausePanel.hidden = !isPaused || isHintPauseOpen || isExitConfirmOpen || isStageClear || isGameOver;
+  }
+};
+
+const renderHintPausePanel = () => {
+  if (hintPausePanel) {
+    hintPausePanel.hidden = !isHintPauseOpen || isStageClear || isGameOver;
   }
 };
 
@@ -1717,6 +1872,19 @@ const spendManagementPower = (amount: number) => {
   return true;
 };
 
+const openHintPause = (hint: string) => {
+  pauseGame();
+  isHintPauseOpen = true;
+
+  if (hintPauseMessage) {
+    hintPauseMessage.textContent = hint;
+  }
+
+  setSupplyStatus("💡 ミストンのヒント", hint, "停止中", "paused");
+  characterEvents.notify("miston", "ヒントだよ！", 1800);
+  renderBoard(engine.getSnapshot());
+};
+
 const getInventoryAnalysisText = () => {
   const counts = inventory.getCounts();
   const lowest = blockTypes.reduce((currentLowest, type) =>
@@ -1758,8 +1926,7 @@ const useManagementSkill = (skill: keyof typeof MANAGEMENT_SKILL_COSTS) => {
   switch (skill) {
     case "aiHint":
       showHintUnlock();
-      setSupplyStatus("💡 AIヒント", aiHintText, `管理力 -${cost}`, "thinking");
-      characterEvents.notify("asuton", "分析しました！", 1800);
+      openHintPause(aiHintText);
       break;
     case "emergencyReplenish":
       activeReplenishmentResult = applyReplenishment();
@@ -2441,7 +2608,7 @@ const pauseGame = () => {
 };
 
 const resumeGame = () => {
-  if (!isPaused || gameState !== "paused") {
+  if (!isPaused || isHintPauseOpen || gameState !== "paused") {
     return;
   }
 
@@ -2490,6 +2657,15 @@ const restartFromMenu = () => {
   isPaused = false;
   isExitConfirmOpen = false;
   startTraining("pause-restart");
+};
+
+const resumeFromHint = () => {
+  if (!isHintPauseOpen) {
+    return;
+  }
+
+  isHintPauseOpen = false;
+  resumeGame();
 };
 
 const openExitConfirm = () => {
@@ -3014,6 +3190,7 @@ const resetGame = (countAsPlay = false, source = "resetGame", stageId: StageId =
   isStageClear = false;
   isGameOver = false;
   isPaused = false;
+  isHintPauseOpen = false;
   isExitConfirmOpen = false;
   isCountdownActive = false;
   isReplenishmentRequestActive = false;
@@ -3090,6 +3267,7 @@ const returnToTitle = (source: string) => {
   hideAllEffects();
   delete document.body.dataset.lastSpurt;
   isPaused = false;
+  isHintPauseOpen = false;
   isExitConfirmOpen = false;
   isCountdownActive = false;
   isReplenishmentRequestActive = false;
@@ -3151,6 +3329,9 @@ document.querySelectorAll<HTMLButtonElement>("[data-action]").forEach((button) =
         break;
       case "resume-game":
         resumeGame();
+        break;
+      case "hint-ok-resume":
+        resumeFromHint();
         break;
       case "restart-from-pause":
         restartFromMenu();
