@@ -140,6 +140,7 @@ let characterTimer: number | null = null;
 let burstTimer: number | null = null;
 let skillEffectTimer: number | null = null;
 let specialImpactTimer: number | null = null;
+let progressWatchdogTimer: number | null = null;
 let pieceBag: TetrominoType[] = [];
 
 const readUnlockedStage = () => {
@@ -230,7 +231,7 @@ const initialMarkup = `
         <p>現場で使う演出と見やすさを調整します。</p>
         <section class="m2-settings-card" aria-labelledby="settings-feedback-title">
           <h3 id="settings-feedback-title">フィードバック</h3>
-          <label class="m2-setting-row"><span><b>バイブレーション</b><small>スキル成功・危険・必殺技で振動します</small></span><input type="checkbox" data-setting="vibration" role="switch" /></label>
+          <label class="m2-setting-row"><span><b>バイブレーション</b><small>対応端末で、ライン消去・スキル成功・必殺技時に振動します</small></span><input type="checkbox" data-setting="vibration" role="switch" /></label>
           <label class="m2-setting-row"><span><b>効果音</b><small>操作と現場復旧の短い効果音</small></span><input type="checkbox" data-setting="sound" role="switch" /></label>
         </section>
         <section class="m2-settings-card" aria-labelledby="settings-display-title">
@@ -604,6 +605,7 @@ const stopGameTimers = () => {
   clearTimer(burstTimer);
   clearTimer(skillEffectTimer);
   clearTimer(specialImpactTimer);
+  if (progressWatchdogTimer !== null) window.clearInterval(progressWatchdogTimer);
   aiTurnTimer = null;
   dropTimer = null;
   analysisTimer = null;
@@ -611,16 +613,24 @@ const stopGameTimers = () => {
   burstTimer = null;
   skillEffectTimer = null;
   specialImpactTimer = null;
+  progressWatchdogTimer = null;
 };
 
-const feedback = (kind: "small" | "medium" | "big" | "special") => {
+type FeedbackKind = "small" | "medium" | "big" | "special";
+
+const requestVibration = (pattern: number | number[]) => {
+  if (!settings.vibration || typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
+  navigator.vibrate(pattern);
+};
+
+const feedback = (kind: FeedbackKind) => {
   const patterns: Record<typeof kind, number | number[]> = {
     small: 15,
     medium: [20, 30, 20],
     big: [28, 32, 28, 42],
     special: [45, 55, 70, 80],
   };
-  if (settings.vibration) navigator.vibrate?.(patterns[kind]);
+  requestVibration(patterns[kind]);
 
   if (!settings.sound) return;
 
@@ -927,6 +937,8 @@ const completeTurn = () => {
 };
 
 const continueFallingPiece = () => {
+  // このコールバックは実行済みなので、次の落下予約を正しく作り直せるようにする。
+  dropTimer = null;
   if (!state.playing || state.paused || state.analysisActive || state.gameOver || state.cleared) return;
   const snapshot = engine.getSnapshot();
   const targetY = state.activePlan?.position.y;
@@ -942,6 +954,8 @@ const continueFallingPiece = () => {
 };
 
 const runAITurn = () => {
+  // 発火済みの予約を残さない。予約が消えた場合は進行監視が安全に再開できる。
+  aiTurnTimer = null;
   if (!state.playing || state.paused || state.analysisActive || state.gameOver || state.cleared || engine.getSnapshot().hasActiveTetromino) return;
   const type = state.nextType;
   const plan = mistakeAI.choosePlacement(
@@ -969,7 +983,10 @@ const runAITurn = () => {
 
 const scheduleAITurn = (delay = currentStage().turnGapMs) => {
   clearTimer(aiTurnTimer);
-  aiTurnTimer = window.setTimeout(runAITurn, delay);
+  aiTurnTimer = window.setTimeout(() => {
+    aiTurnTimer = null;
+    runAITurn();
+  }, delay);
 };
 
 // AIの一手が落下中か、次の一手待ちかをここで判定して再開する。
@@ -983,6 +1000,21 @@ const resumeAIFlow = (delay = currentStage().fallStepMs) => {
   } else {
     scheduleAITurn(Math.min(delay, currentStage().turnGapMs));
   }
+};
+
+// スキル、設定、演出の切替が重なって予約だけが失われても、プレイを止めないための保険。
+const ensureAIProgress = () => {
+  if (!state.playing || state.paused || state.analysisActive || state.gameOver || state.cleared) return;
+  if (engine.getSnapshot().hasActiveTetromino) {
+    if (dropTimer === null) resumeAIFlow(80);
+    return;
+  }
+  if (aiTurnTimer === null) resumeAIFlow(120);
+};
+
+const startProgressWatchdog = () => {
+  if (progressWatchdogTimer !== null) window.clearInterval(progressWatchdogTimer);
+  progressWatchdogTimer = window.setInterval(ensureAIProgress, 250);
 };
 
 const startGame = (stageId = state.currentStageId) => {
@@ -1013,6 +1045,7 @@ const startGame = (stageId = state.currentStageId) => {
   speak("minton", "崩れた現場、資材で整えましょう。", 1800);
   setScreen("game");
   render();
+  startProgressWatchdog();
   scheduleAITurn(850);
 };
 
@@ -1053,6 +1086,7 @@ const useSkill = (skill: Skill) => {
     const hadActiveTetromino = engine.getSnapshot().hasActiveTetromino;
     clearTimer(analysisTimer);
     analysisTimer = window.setTimeout(() => {
+      analysisTimer = null;
       state.analysisActive = false;
       state.analysisSpecialReady = false;
       state.analysisTargets = [];
