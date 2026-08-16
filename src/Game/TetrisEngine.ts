@@ -50,6 +50,19 @@ export class TetrisEngine {
     return this.getSnapshot();
   }
 
+  seedBoard(cells: BoardCell[][]): TetrisSnapshot {
+    if (cells.length !== this.board.height || cells.some((row) => row.length !== this.board.width)) {
+      throw new Error("Initial board must match the 10 x 20 playfield.");
+    }
+
+    this.board.setCells(cells);
+    this.active = null;
+    this.lastClearedLines = 0;
+    this.isGameOver = false;
+
+    return this.getSnapshot();
+  }
+
   markGameOver(): TetrisSnapshot {
     this.active = null;
     this.isGameOver = true;
@@ -85,6 +98,10 @@ export class TetrisEngine {
 
   moveRight(): TetrisSnapshot {
     return this.tryMove({ x: 1, y: 0 });
+  }
+
+  moveDown(): TetrisSnapshot {
+    return this.tryMove({ x: 0, y: 1 });
   }
 
   rotate(): TetrisSnapshot {
@@ -143,6 +160,34 @@ export class TetrisEngine {
     return this.getSnapshot();
   }
 
+  removeSurfaceBlock(position: BoardPosition): boolean {
+    if (this.isGameOver || !this.board.isSurfaceCell(position)) {
+      return false;
+    }
+
+    return this.board.setCell(position, null);
+  }
+
+  placeTemporaryPatch(position: BoardPosition): boolean {
+    if (this.isGameOver || !this.board.isHole(position)) {
+      return false;
+    }
+
+    return this.board.setCell(position, "PATCH");
+  }
+
+  placeRepairBlock(position: BoardPosition): boolean {
+    if (this.isGameOver || !this.board.isRebuildableCell(position)) {
+      return false;
+    }
+
+    return this.board.setCell(position, "REPAIR");
+  }
+
+  clearTemporaryPatches(): number {
+    return this.board.clearTemporaryPatches();
+  }
+
   previewPlacement(placement: TetrisPlacement): TetrisSnapshot {
     if (this.isGameOver || this.active === null) {
       return this.getSnapshot();
@@ -155,6 +200,26 @@ export class TetrisEngine {
         ...this.active,
         rotationIndex: placement.rotationIndex,
         position: placement.position
+      };
+    }
+
+    return this.getSnapshot();
+  }
+
+  prepareDrop(placement: TetrisPlacement): TetrisSnapshot {
+    if (this.isGameOver || this.active === null) {
+      return this.getSnapshot();
+    }
+
+    const shape = this.catalog.getRotation(this.active.type, placement.rotationIndex);
+    const minY = Math.min(...shape.map((cell) => cell.y));
+    const start = { x: placement.position.x, y: -minY };
+
+    if (this.board.canPlace(shape, start)) {
+      this.active = {
+        ...this.active,
+        rotationIndex: placement.rotationIndex,
+        position: start
       };
     }
 

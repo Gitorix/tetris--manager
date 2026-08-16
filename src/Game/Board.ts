@@ -1,6 +1,6 @@
 import type { TetrominoCell, TetrominoType } from "./Tetromino";
 
-export type BoardCell = TetrominoType | null;
+export type BoardCell = TetrominoType | "PATCH" | "REPAIR" | null;
 
 export type BoardPosition = {
   x: number;
@@ -31,6 +31,64 @@ export class Board {
 
   setCells(cells: BoardCell[][]): void {
     this.cells = cells.map((row) => [...row]);
+  }
+
+  getCell(position: BoardPosition): BoardCell {
+    return this.isInside(position) ? this.cells[position.y][position.x] : null;
+  }
+
+  setCell(position: BoardPosition, value: BoardCell): boolean {
+    if (!this.isInside(position)) {
+      return false;
+    }
+
+    this.cells[position.y][position.x] = value;
+    return true;
+  }
+
+  isSurfaceCell(position: BoardPosition): boolean {
+    if (!this.isInside(position) || this.cells[position.y][position.x] === null) {
+      return false;
+    }
+
+    for (let y = 0; y < position.y; y += 1) {
+      if (this.cells[y][position.x] !== null) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  isHole(position: BoardPosition): boolean {
+    if (!this.isInside(position) || this.cells[position.y][position.x] !== null) {
+      return false;
+    }
+
+    return this.cells.slice(0, position.y).some((row) => row[position.x] !== null);
+  }
+
+  isRebuildableCell(position: BoardPosition): boolean {
+    if (!this.isInside(position) || this.cells[position.y][position.x] !== null) {
+      return false;
+    }
+
+    return position.y === this.height - 1 || this.cells[position.y + 1][position.x] !== null;
+  }
+
+  clearTemporaryPatches(): number {
+    let cleared = 0;
+
+    this.cells.forEach((row, y) => {
+      row.forEach((cell, x) => {
+        if (cell === "PATCH") {
+          this.cells[y][x] = null;
+          cleared += 1;
+        }
+      });
+    });
+
+    return cleared;
   }
 
   canPlace(shape: TetrominoCell[], position: BoardPosition): boolean {

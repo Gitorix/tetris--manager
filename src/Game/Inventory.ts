@@ -3,23 +3,23 @@ import { TETROMINO_ORDER, type TetrominoType } from "./Tetromino";
 export type InventoryCounts = Record<TetrominoType, number>;
 
 export const INITIAL_INVENTORY: InventoryCounts = {
-  I: 2,
-  O: 4,
-  T: 3,
-  L: 4,
-  J: 4,
-  S: 4,
-  Z: 4
+  I: 5,
+  O: 8,
+  T: 6,
+  L: 8,
+  J: 8,
+  S: 8,
+  Z: 8
 };
 
 export const MAX_INVENTORY: InventoryCounts = {
-  I: 3,
-  O: 5,
-  T: 5,
-  L: 5,
-  J: 5,
-  S: 5,
-  Z: 5
+  I: 8,
+  O: 12,
+  T: 10,
+  L: 12,
+  J: 12,
+  S: 12,
+  Z: 12
 };
 
 export class Inventory {
