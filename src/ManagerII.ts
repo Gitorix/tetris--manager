@@ -7,6 +7,9 @@ import asutonUrl from "../asuton.png";
 import mintonUrl from "../minton.png";
 import mistonUrl from "../miston.png";
 
+const rulebookGameplayUrl = `${import.meta.env.BASE_URL}rulebook/gameplay-live.png`;
+const rulebookAnalysisUrl = `${import.meta.env.BASE_URL}rulebook/priority-analysis.png`;
+
 const app = document.querySelector<HTMLDivElement>("#app");
 
 if (!app) {
@@ -319,7 +322,7 @@ const initialMarkup = `
             </ol>
           </div>
           <figure class="m2-rulebook-shot">
-            <img src="/rulebook/gameplay-live.png" alt="実際のプレイ中の盤面と管理スキル" />
+            <img src="${rulebookGameplayUrl}" alt="実際のプレイ中の盤面と管理スキル" />
             <figcaption>実際のプレイ画面: 盤面を見ながら下のチーム操作を使います。</figcaption>
           </figure>
         </section>
@@ -406,7 +409,7 @@ const initialMarkup = `
 
         <section class="m2-rulebook-analysis" aria-labelledby="rulebook-analysis-title">
           <figure class="m2-rulebook-shot m2-rulebook-analysis-shot">
-            <img src="/rulebook/priority-analysis.png" alt="優先撤去分析で危険なブロックが光る実際の画面" />
+            <img src="${rulebookAnalysisUrl}" alt="優先撤去分析で危険なブロックが光る実際の画面" />
             <figcaption>優先撤去分析: 光ったブロックから触ると判断しやすくなります。</figcaption>
           </figure>
           <div class="m2-rulebook-analysis-copy">
@@ -969,6 +972,19 @@ const scheduleAITurn = (delay = currentStage().turnGapMs) => {
   aiTurnTimer = window.setTimeout(runAITurn, delay);
 };
 
+// AIの一手が落下中か、次の一手待ちかをここで判定して再開する。
+// スキル演出・分析・設定画面から戻る経路で止まりっぱなしにしないための共通入口。
+const resumeAIFlow = (delay = currentStage().fallStepMs) => {
+  if (!state.playing || state.paused || state.analysisActive || state.gameOver || state.cleared) return;
+  clearTimer(aiTurnTimer);
+  clearTimer(dropTimer);
+  if (engine.getSnapshot().hasActiveTetromino) {
+    dropTimer = window.setTimeout(continueFallingPiece, delay);
+  } else {
+    scheduleAITurn(Math.min(delay, currentStage().turnGapMs));
+  }
+};
+
 const startGame = (stageId = state.currentStageId) => {
   stopGameTimers();
   state.currentStageId = STAGES.some((stage) => stage.id === stageId) ? stageId : 1;
@@ -1042,11 +1058,7 @@ const useSkill = (skill: Skill) => {
       state.analysisTargets = [];
       render();
       if (!state.playing || state.paused || state.gameOver || state.cleared) return;
-      if (hadActiveTetromino && engine.getSnapshot().hasActiveTetromino) {
-        dropTimer = window.setTimeout(continueFallingPiece, currentStage().fallStepMs);
-      } else {
-        scheduleAITurn(120);
-      }
+      resumeAIFlow(hadActiveTetromino ? currentStage().fallStepMs : 120);
     }, ANALYSIS_MS);
     showToast("優先撤去分析: 点滅中の露出ブロックを優先して撤去してください。AIを2秒停止します。", "info", ANALYSIS_MS);
     speak("asuton", "上に露出した危険ブロックを確認。2秒停止します。", 1900);
@@ -1167,11 +1179,7 @@ const runSpecial = () => {
   flashBoard("special");
   render();
   if (useAnalysisTargets && state.playing && !state.paused && !state.gameOver && !state.cleared) {
-    if (engine.getSnapshot().hasActiveTetromino) {
-      dropTimer = window.setTimeout(continueFallingPiece, currentStage().fallStepMs);
-    } else {
-      scheduleAITurn(120);
-    }
+    resumeAIFlow(120);
   }
 };
 
@@ -1187,11 +1195,7 @@ const resumeGame = () => {
   if (!state.playing || !state.paused) return;
   state.paused = false;
   render();
-  if (engine.getSnapshot().hasActiveTetromino) {
-    dropTimer = window.setTimeout(continueFallingPiece, currentStage().fallStepMs);
-  } else {
-    scheduleAITurn(260);
-  }
+  resumeAIFlow(260);
 };
 
 const exitGame = () => {
@@ -1209,7 +1213,9 @@ const openSettings = () => {
 };
 
 const closeSettings = () => {
+  const shouldResume = state.playing && state.paused;
   setScreen(state.playing ? "game" : "title");
+  if (shouldResume) resumeGame();
   render();
 };
 
@@ -1245,6 +1251,7 @@ const bindEvents = () => {
 
 export const mountManagerII = () => {
   app.innerHTML = initialMarkup;
+  app.addEventListener("dblclick", (event) => event.preventDefault());
   bindEvents();
   setScreen("title");
   applySettings();
