@@ -141,6 +141,9 @@ let burstTimer: number | null = null;
 let skillEffectTimer: number | null = null;
 let specialImpactTimer: number | null = null;
 let progressWatchdogTimer: number | null = null;
+let aiTurnDueAt = 0;
+let dropDueAt = 0;
+let analysisEndsAt = 0;
 let pieceBag: TetrominoType[] = [];
 
 const readUnlockedStage = () => {
@@ -614,6 +617,9 @@ const stopGameTimers = () => {
   skillEffectTimer = null;
   specialImpactTimer = null;
   progressWatchdogTimer = null;
+  aiTurnDueAt = 0;
+  dropDueAt = 0;
+  analysisEndsAt = 0;
 };
 
 type FeedbackKind = "small" | "medium" | "big" | "special";
@@ -936,6 +942,16 @@ const completeTurn = () => {
   scheduleAITurn(currentStage().turnGapMs);
 };
 
+const scheduleDrop = (delay = currentStage().fallStepMs) => {
+  clearTimer(dropTimer);
+  dropDueAt = Date.now() + delay;
+  dropTimer = window.setTimeout(() => {
+    dropTimer = null;
+    dropDueAt = 0;
+    continueFallingPiece();
+  }, delay);
+};
+
 const continueFallingPiece = () => {
   // このコールバックは実行済みなので、次の落下予約を正しく作り直せるようにする。
   dropTimer = null;
@@ -950,7 +966,7 @@ const continueFallingPiece = () => {
 
   engine.moveDown();
   render();
-  dropTimer = window.setTimeout(continueFallingPiece, currentStage().fallStepMs);
+  scheduleDrop();
 };
 
 const runAITurn = () => {
@@ -978,13 +994,15 @@ const runAITurn = () => {
   engine.prepareDrop(plan);
   state.activePlan = plan;
   render();
-  dropTimer = window.setTimeout(continueFallingPiece, currentStage().fallStepMs);
+  scheduleDrop();
 };
 
 const scheduleAITurn = (delay = currentStage().turnGapMs) => {
   clearTimer(aiTurnTimer);
+  aiTurnDueAt = Date.now() + delay;
   aiTurnTimer = window.setTimeout(() => {
     aiTurnTimer = null;
+    aiTurnDueAt = 0;
     runAITurn();
   }, delay);
 };
@@ -996,20 +1014,36 @@ const resumeAIFlow = (delay = currentStage().fallStepMs) => {
   clearTimer(aiTurnTimer);
   clearTimer(dropTimer);
   if (engine.getSnapshot().hasActiveTetromino) {
-    dropTimer = window.setTimeout(continueFallingPiece, delay);
+    scheduleDrop(delay);
   } else {
     scheduleAITurn(Math.min(delay, currentStage().turnGapMs));
   }
 };
 
+const endAnalysisPause = () => {
+  clearTimer(analysisTimer);
+  analysisTimer = null;
+  analysisEndsAt = 0;
+  state.analysisActive = false;
+  state.analysisSpecialReady = false;
+  state.analysisTargets = [];
+  render();
+  resumeAIFlow(120);
+};
+
 // スキル、設定、演出の切替が重なって予約だけが失われても、プレイを止めないための保険。
 const ensureAIProgress = () => {
-  if (!state.playing || state.paused || state.analysisActive || state.gameOver || state.cleared) return;
-  if (engine.getSnapshot().hasActiveTetromino) {
-    if (dropTimer === null) resumeAIFlow(80);
+  if (!state.playing || state.paused || state.gameOver || state.cleared) return;
+  if (state.analysisActive) {
+    if (analysisEndsAt > 0 && Date.now() >= analysisEndsAt) endAnalysisPause();
     return;
   }
-  if (aiTurnTimer === null) resumeAIFlow(120);
+  const now = Date.now();
+  if (engine.getSnapshot().hasActiveTetromino) {
+    if (dropTimer === null || (dropDueAt > 0 && now > dropDueAt + 500)) resumeAIFlow(80);
+    return;
+  }
+  if (aiTurnTimer === null || (aiTurnDueAt > 0 && now > aiTurnDueAt + 500)) resumeAIFlow(120);
 };
 
 const startProgressWatchdog = () => {
@@ -1083,16 +1117,11 @@ const useSkill = (skill: Skill) => {
     state.analysisTargets = getPriorityRemovalTargets(engine.getSnapshot().cells);
     clearTimer(aiTurnTimer);
     clearTimer(dropTimer);
-    const hadActiveTetromino = engine.getSnapshot().hasActiveTetromino;
     clearTimer(analysisTimer);
+    analysisEndsAt = Date.now() + ANALYSIS_MS;
     analysisTimer = window.setTimeout(() => {
-      analysisTimer = null;
-      state.analysisActive = false;
-      state.analysisSpecialReady = false;
-      state.analysisTargets = [];
-      render();
       if (!state.playing || state.paused || state.gameOver || state.cleared) return;
-      resumeAIFlow(hadActiveTetromino ? currentStage().fallStepMs : 120);
+      endAnalysisPause();
     }, ANALYSIS_MS);
     showToast("優先撤去分析: 点滅中の露出ブロックを優先して撤去してください。AIを2秒停止します。", "info", ANALYSIS_MS);
     speak("asuton", "上に露出した危険ブロックを確認。2秒停止します。", 1900);
@@ -1190,6 +1219,7 @@ const runSpecial = () => {
   if (useAnalysisTargets) {
     clearTimer(analysisTimer);
     analysisTimer = null;
+    analysisEndsAt = 0;
     state.analysisActive = false;
     state.analysisSpecialReady = false;
     state.analysisTargets = [];
