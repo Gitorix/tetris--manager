@@ -141,6 +141,7 @@ let burstTimer: number | null = null;
 let skillEffectTimer: number | null = null;
 let specialImpactTimer: number | null = null;
 let progressWatchdogTimer: number | null = null;
+let operationEffectTimer: number | null = null;
 let aiTurnDueAt = 0;
 let dropDueAt = 0;
 let analysisEndsAt = 0;
@@ -514,6 +515,7 @@ const initialMarkup = `
             <span class="m2-board-toast" data-toast data-tone="info">現場を選んでください</span>
           </section>
           <div class="m2-analysis-layer" data-analysis-layer hidden aria-hidden="true"></div>
+          <div class="m2-operation-effect" data-operation-effect hidden aria-hidden="true"></div>
           <div class="m2-clear-burst" data-clear-burst hidden>現場復旧！</div>
           <div class="m2-skill-flash" data-skill-flash hidden aria-hidden="true"></div>
           <section class="m2-result-modal" data-result-modal hidden aria-live="assertive"></section>
@@ -608,6 +610,7 @@ const stopGameTimers = () => {
   clearTimer(burstTimer);
   clearTimer(skillEffectTimer);
   clearTimer(specialImpactTimer);
+  clearTimer(operationEffectTimer);
   if (progressWatchdogTimer !== null) window.clearInterval(progressWatchdogTimer);
   aiTurnTimer = null;
   dropTimer = null;
@@ -616,6 +619,7 @@ const stopGameTimers = () => {
   burstTimer = null;
   skillEffectTimer = null;
   specialImpactTimer = null;
+  operationEffectTimer = null;
   progressWatchdogTimer = null;
   aiTurnDueAt = 0;
   dropDueAt = 0;
@@ -869,6 +873,18 @@ const showSpecialImpact = (removed: { x: number; y: number }[], patched: { x: nu
   }, 1150);
 };
 
+const showOperationEffect = (kind: "delivery" | "analysis" | "special", label: string, duration = 1400) => {
+  const effect = app.querySelector<HTMLElement>("[data-operation-effect]");
+  if (!effect) return;
+  effect.dataset.kind = kind;
+  effect.innerHTML = `<i></i><i></i><i></i><strong>${label}</strong>`;
+  effect.hidden = false;
+  clearTimer(operationEffectTimer);
+  operationEffectTimer = window.setTimeout(() => {
+    effect.hidden = true;
+  }, duration);
+};
+
 const addGauge = (amount: number) => {
   state.specialGauge = Math.min(MAX_SPECIAL_GAUGE, state.specialGauge + Math.max(1, Math.round(amount * SPECIAL_GAUGE_GAIN_MULTIPLIER)));
 };
@@ -893,11 +909,7 @@ const finishGame = (outcome: "clear" | "collapse") => {
   render();
 };
 
-const completeTurn = () => {
-  const snapshot = engine.hardDrop();
-  state.activePlan = null;
-  state.turn += 1;
-  if (state.deliveryCooldown > 0) state.deliveryCooldown -= 1;
+const applyLineClearResult = (snapshot: ReturnType<typeof engine.getSnapshot>) => {
   let currentSnapshot = snapshot;
   if (snapshot.lastClearedLines > 0) {
     const lines = snapshot.lastClearedLines;
@@ -918,7 +930,17 @@ const completeTurn = () => {
     }
     feedback(lines >= 3 ? "big" : "medium");
     flashBoard("clear");
-  } else if (state.recoveryWindow > 0) {
+  }
+  return currentSnapshot;
+};
+
+const completeTurn = () => {
+  const snapshot = engine.hardDrop();
+  state.activePlan = null;
+  state.turn += 1;
+  if (state.deliveryCooldown > 0) state.deliveryCooldown -= 1;
+  const currentSnapshot = applyLineClearResult(snapshot);
+  if (snapshot.lastClearedLines === 0 && state.recoveryWindow > 0) {
     state.recoveryWindow -= 1;
     if (state.recoveryWindow === 0) state.managementChain = 0;
   }
@@ -943,18 +965,11 @@ const completeTurn = () => {
 };
 
 const scheduleDrop = (delay = currentStage().fallStepMs) => {
-  clearTimer(dropTimer);
   dropDueAt = Date.now() + delay;
-  dropTimer = window.setTimeout(() => {
-    dropTimer = null;
-    dropDueAt = 0;
-    continueFallingPiece();
-  }, delay);
 };
 
 const continueFallingPiece = () => {
-  // このコールバックは実行済みなので、次の落下予約を正しく作り直せるようにする。
-  dropTimer = null;
+  dropDueAt = 0;
   if (!state.playing || state.paused || state.analysisActive || state.gameOver || state.cleared) return;
   const snapshot = engine.getSnapshot();
   const targetY = state.activePlan?.position.y;
@@ -998,21 +1013,15 @@ const runAITurn = () => {
 };
 
 const scheduleAITurn = (delay = currentStage().turnGapMs) => {
-  clearTimer(aiTurnTimer);
   aiTurnDueAt = Date.now() + delay;
-  aiTurnTimer = window.setTimeout(() => {
-    aiTurnTimer = null;
-    aiTurnDueAt = 0;
-    runAITurn();
-  }, delay);
 };
 
 // AIの一手が落下中か、次の一手待ちかをここで判定して再開する。
 // スキル演出・分析・設定画面から戻る経路で止まりっぱなしにしないための共通入口。
 const resumeAIFlow = (delay = currentStage().fallStepMs) => {
   if (!state.playing || state.paused || state.analysisActive || state.gameOver || state.cleared) return;
-  clearTimer(aiTurnTimer);
-  clearTimer(dropTimer);
+  aiTurnDueAt = 0;
+  dropDueAt = 0;
   if (engine.getSnapshot().hasActiveTetromino) {
     scheduleDrop(delay);
   } else {
@@ -1031,7 +1040,8 @@ const endAnalysisPause = () => {
   resumeAIFlow(120);
 };
 
-// スキル、設定、演出の切替が重なって予約だけが失われても、プレイを止めないための保険。
+// ゲーム進行を担う唯一の時計。1回の更新で1マスだけ進めるため、
+// ブラウザが一時的に重くなっても落下がまとめて実行されない。
 const ensureAIProgress = () => {
   if (!state.playing || state.paused || state.gameOver || state.cleared) return;
   if (state.analysisActive) {
@@ -1040,15 +1050,20 @@ const ensureAIProgress = () => {
   }
   const now = Date.now();
   if (engine.getSnapshot().hasActiveTetromino) {
-    if (dropTimer === null || (dropDueAt > 0 && now > dropDueAt + 500)) resumeAIFlow(80);
+    if (dropDueAt === 0) scheduleDrop();
+    else if (now >= dropDueAt) continueFallingPiece();
     return;
   }
-  if (aiTurnTimer === null || (aiTurnDueAt > 0 && now > aiTurnDueAt + 500)) resumeAIFlow(120);
+  if (aiTurnDueAt === 0) scheduleAITurn();
+  else if (now >= aiTurnDueAt) {
+    aiTurnDueAt = 0;
+    runAITurn();
+  }
 };
 
 const startProgressWatchdog = () => {
   if (progressWatchdogTimer !== null) window.clearInterval(progressWatchdogTimer);
-  progressWatchdogTimer = window.setInterval(ensureAIProgress, 250);
+  progressWatchdogTimer = window.setInterval(ensureAIProgress, 16);
 };
 
 const startGame = (stageId = state.currentStageId) => {
@@ -1105,6 +1120,7 @@ const useSkill = (skill: Skill) => {
     showToast(`資材搬入完了。補修材 +${delivered}（次の搬入まで3手）`, "good", 2200);
     speak("minton", "補修材、届けました！", 1800);
     showClearBurst(`資材搬入 +${delivered}`);
+    showOperationEffect("delivery", `資材搬入 +${delivered}`);
     feedback("medium");
     flashBoard("clear");
     render();
@@ -1125,6 +1141,7 @@ const useSkill = (skill: Skill) => {
     }, ANALYSIS_MS);
     showToast("優先撤去分析: 点滅中の露出ブロックを優先して撤去してください。AIを2秒停止します。", "info", ANALYSIS_MS);
     speak("asuton", "上に露出した危険ブロックを確認。2秒停止します。", 1900);
+    showOperationEffect("analysis", "優先撤去スキャン", 1750);
     render();
     return;
   }
@@ -1201,6 +1218,15 @@ const applyBoardSkill = (x: number, y: number) => {
   showSkillEffect(skill === "remove" ? "撤去！ 補修材 +1" : "再施工！", { x, y });
   feedback("small");
   flashBoard("clear");
+  const resolvedSnapshot = applyLineClearResult(engine.resolveCompletedLines());
+  if (state.lines >= currentStage().targetLines) {
+    finishGame("clear");
+    return;
+  }
+  if (resolvedSnapshot.isGameOver) {
+    finishGame("collapse");
+    return;
+  }
   render();
 };
 
@@ -1241,6 +1267,16 @@ const runSpecial = () => {
   speak(useAnalysisTargets ? "asuton" : "miston", useAnalysisTargets ? "分析箇所を復旧します。" : "現場、まとめて整えたる。", 2200);
   feedback("special");
   flashBoard("special");
+  showOperationEffect("special", "緊急復旧工事", 1900);
+  const resolvedSnapshot = applyLineClearResult(engine.resolveCompletedLines());
+  if (state.lines >= currentStage().targetLines) {
+    finishGame("clear");
+    return;
+  }
+  if (resolvedSnapshot.isGameOver) {
+    finishGame("collapse");
+    return;
+  }
   render();
   if (useAnalysisTargets && state.playing && !state.paused && !state.gameOver && !state.cleared) {
     resumeAIFlow(120);

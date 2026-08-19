@@ -160,6 +160,16 @@ export class TetrisEngine {
     return this.getSnapshot();
   }
 
+  resolveCompletedLines(): TetrisSnapshot {
+    if (this.isGameOver) {
+      return this.getSnapshot();
+    }
+
+    this.lastClearedLines = this.board.clearCompletedLines();
+    this.score += LINE_SCORE[this.lastClearedLines] ?? 0;
+    return this.getSnapshot();
+  }
+
   removeSurfaceBlock(position: BoardPosition): boolean {
     if (this.isGameOver || !this.board.isSurfaceCell(position)) {
       return false;
