@@ -994,7 +994,21 @@ const continueFallingPiece = () => {
     return;
   }
 
-  engine.moveDown();
+  const previousY = snapshot.activePosition.y;
+  const movedSnapshot = engine.moveDown();
+
+  // A board edit can invalidate the destination calculated at the start of the
+  // turn. In that case moveDown leaves the piece in place. Treat that as an
+  // early landing instead of scheduling the same impossible move forever.
+  if (
+    !movedSnapshot.hasActiveTetromino
+    || movedSnapshot.activePosition === null
+    || movedSnapshot.activePosition.y === previousY
+  ) {
+    completeTurn();
+    return;
+  }
+
   render();
   scheduleDrop();
 };
@@ -1076,9 +1090,22 @@ const ensureAIProgress = () => {
   }
 };
 
+const safelyEnsureAIProgress = () => {
+  try {
+    ensureAIProgress();
+  } catch (error) {
+    console.error("[ManagerII] AI progress recovered after an unexpected error.", error);
+    aiTurnDueAt = 0;
+    dropDueAt = 0;
+    const snapshot = engine.getSnapshot();
+    if (snapshot.hasActiveTetromino) completeTurn();
+    else scheduleAITurn(120);
+  }
+};
+
 const startProgressWatchdog = () => {
   if (progressWatchdogTimer !== null) window.clearInterval(progressWatchdogTimer);
-  progressWatchdogTimer = window.setInterval(ensureAIProgress, 16);
+  progressWatchdogTimer = window.setInterval(safelyEnsureAIProgress, 16);
 };
 
 const startGame = (stageId = state.currentStageId) => {
