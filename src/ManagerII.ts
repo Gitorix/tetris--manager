@@ -142,6 +142,7 @@ let skillEffectTimer: number | null = null;
 let specialImpactTimer: number | null = null;
 let progressWatchdogTimer: number | null = null;
 let operationEffectTimer: number | null = null;
+let materialFlashTimer: number | null = null;
 let aiTurnDueAt = 0;
 let dropDueAt = 0;
 let analysisEndsAt = 0;
@@ -515,7 +516,6 @@ const initialMarkup = `
             <span class="m2-board-toast" data-toast data-tone="info">現場を選んでください</span>
           </section>
           <div class="m2-analysis-layer" data-analysis-layer hidden aria-hidden="true"></div>
-          <div class="m2-operation-effect" data-operation-effect hidden aria-hidden="true"></div>
           <div class="m2-clear-burst" data-clear-burst hidden>現場復旧！</div>
           <div class="m2-skill-flash" data-skill-flash hidden aria-hidden="true"></div>
           <section class="m2-result-modal" data-result-modal hidden aria-live="assertive"></section>
@@ -558,6 +558,7 @@ const initialMarkup = `
           </button>
         </aside>
       </div>
+      <div class="m2-operation-effect" data-operation-effect hidden aria-hidden="true"></div>
       <p class="m2-action-guide" data-action-guide>ミストンのスキルを選び、盤面の対象マスをタップしてください。</p>
     </section>
   </main>
@@ -611,6 +612,7 @@ const stopGameTimers = () => {
   clearTimer(skillEffectTimer);
   clearTimer(specialImpactTimer);
   clearTimer(operationEffectTimer);
+  clearTimer(materialFlashTimer);
   if (progressWatchdogTimer !== null) window.clearInterval(progressWatchdogTimer);
   aiTurnTimer = null;
   dropTimer = null;
@@ -620,6 +622,7 @@ const stopGameTimers = () => {
   skillEffectTimer = null;
   specialImpactTimer = null;
   operationEffectTimer = null;
+  materialFlashTimer = null;
   progressWatchdogTimer = null;
   aiTurnDueAt = 0;
   dropDueAt = 0;
@@ -885,6 +888,18 @@ const showOperationEffect = (kind: "delivery" | "analysis" | "special", label: s
   }, duration);
 };
 
+const flashMaterialStock = (amount: number) => {
+  const stock = app.querySelector<HTMLElement>(".m2-material-stock");
+  if (!stock) return;
+  stock.dataset.flash = "true";
+  stock.dataset.added = `+${amount}`;
+  clearTimer(materialFlashTimer);
+  materialFlashTimer = window.setTimeout(() => {
+    delete stock.dataset.flash;
+    delete stock.dataset.added;
+  }, 1500);
+};
+
 const addGauge = (amount: number) => {
   state.specialGauge = Math.min(MAX_SPECIAL_GAUGE, state.specialGauge + Math.max(1, Math.round(amount * SPECIAL_GAUGE_GAIN_MULTIPLIER)));
 };
@@ -1121,6 +1136,7 @@ const useSkill = (skill: Skill) => {
     speak("minton", "補修材、届けました！", 1800);
     showClearBurst(`資材搬入 +${delivered}`);
     showOperationEffect("delivery", `資材搬入 +${delivered}`);
+    flashMaterialStock(delivered);
     feedback("medium");
     flashBoard("clear");
     render();
