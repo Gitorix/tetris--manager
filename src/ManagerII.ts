@@ -740,8 +740,10 @@ const render = () => {
     const y = Number(cell.dataset.y);
     const fixed = snapshot.cells[y]?.[x] ?? null;
     const activeType = active.get(`${x},${y}`) ?? null;
+    const isSurface = Boolean(fixed) && !activeType && engine.board.isSurfaceCell({ x, y });
     cell.dataset.block = activeType ?? fixed ?? "";
     cell.dataset.active = activeType ? "true" : "false";
+    cell.dataset.surface = isSurface ? "true" : "false";
     cell.dataset.hole = state.analysisActive && state.analysisTargets.some((position) => position.x === x && position.y === y) ? "true" : "false";
     cell.dataset.rebuildable = state.selectedSkill === "rebuild" && !fixed && !activeType && (y === 19 || snapshot.cells[y + 1]?.[x] !== null) ? "true" : "false";
     cell.dataset.effect = state.skillEffect?.position.x === x && state.skillEffect.position.y === y ? "true" : "false";
@@ -750,7 +752,7 @@ const render = () => {
       : state.specialImpact?.patched.some((position) => position.x === x && position.y === y)
         ? "patch"
         : "";
-    cell.setAttribute("aria-label", `${y + 1}行 ${x + 1}列${activeType ?? fixed ? ` ${activeType ?? fixed}` : ""}`);
+    cell.setAttribute("aria-label", `${y + 1}行 ${x + 1}列${activeType ?? fixed ? ` ${activeType ?? fixed}` : ""}${isSurface ? " 撤去可能" : ""}`);
   });
 
   boardFrame()?.setAttribute("data-danger", diagnostics.level);
@@ -1229,9 +1231,29 @@ const applyBoardSkill = (x: number, y: number) => {
     render();
     return;
   }
-  const succeeded = skill === "remove"
-    ? engine.removeSurfaceBlock({ x, y })
-    : engine.placeRepairBlock({ x, y });
+  const snapshot = engine.getSnapshot();
+  const isValidTarget = (targetX: number, targetY: number) => skill === "remove"
+    ? engine.board.isSurfaceCell({ x: targetX, y: targetY })
+    : engine.board.isRebuildableCell({ x: targetX, y: targetY });
+  const target = isValidTarget(x, y)
+    ? { x, y }
+    : [
+        { x: x - 1, y },
+        { x: x + 1, y },
+        { x, y: y - 1 },
+        { x, y: y + 1 },
+      ].find((candidate) => (
+        candidate.x >= 0
+        && candidate.x < snapshot.cells[0].length
+        && candidate.y >= 0
+        && candidate.y < snapshot.cells.length
+        && isValidTarget(candidate.x, candidate.y)
+      ));
+  const succeeded = target
+    ? skill === "remove"
+      ? engine.removeSurfaceBlock(target)
+      : engine.placeRepairBlock(target)
+    : false;
   if (!succeeded) {
     showToast(skill === "remove" ? "撤去できるのは、上に何も積まれていない表面ブロックだけです。" : "再施工は、下に支えがある空きマスへ置けます。", "warn");
     feedback("small");
@@ -1258,7 +1280,7 @@ const applyBoardSkill = (x: number, y: number) => {
     "good",
   );
   speak("miston", skill === "remove" ? "これで通るやろ。" : "ええ足場できた。", 1500);
-  showSkillEffect(skill === "remove" ? "撤去！ 補修材 +1" : "再施工！", { x, y });
+  showSkillEffect(skill === "remove" ? "撤去！ 補修材 +1" : "再施工！", target ?? { x, y });
   feedback("small");
   flashBoard("clear");
   const resolvedSnapshot = applyLineClearResult(engine.resolveCompletedLines());
