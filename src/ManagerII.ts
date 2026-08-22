@@ -9,6 +9,7 @@ import mistonUrl from "../miston.png";
 
 const rulebookGameplayUrl = `${import.meta.env.BASE_URL}rulebook/gameplay-live.png`;
 const rulebookAnalysisUrl = `${import.meta.env.BASE_URL}rulebook/priority-analysis.png`;
+const tutorialVideoUrl = `${import.meta.env.BASE_URL}tutorial/tetris-manager-mobile-tutorial.mp4?v=20260822-order2`;
 
 const app = document.querySelector<HTMLDivElement>("#app");
 
@@ -317,6 +318,33 @@ const initialMarkup = `
           <button class="m2-primary-button" type="button" data-action="open-stage">現場を選ぶ</button>
         </header>
 
+        <nav class="m2-rulebook-view-switch" aria-label="ルールブックの表示方法">
+          <button type="button" data-action="show-rulebook-video" data-rulebook-mode="video" data-active="true">動画で見る</button>
+          <button type="button" data-action="show-rulebook-text" data-rulebook-mode="text">文章で読む</button>
+        </nav>
+
+        <section class="m2-rulebook-video-panel" data-rulebook-panel="video" aria-labelledby="rulebook-video-title">
+          <div class="m2-rulebook-video-copy">
+            <span class="m2-kicker">VIDEO TUTORIAL</span>
+            <h3 id="rulebook-video-title">撤去から緊急復旧工事まで、実際の画面で解説</h3>
+            <p>基本ルール、3人のスキル、必殺技の使い分けを順番に確認できます。</p>
+            <ul><li>操作するボタンを拡大表示</li><li>ナレーションとテキスト付き</li><li>再生できない時は文章版に切替可能</li></ul>
+          </div>
+          <div class="m2-rulebook-video-shell">
+            <video class="m2-rulebook-video" controls playsinline preload="metadata" poster="${rulebookGameplayUrl}" data-rulebook-video>
+              <source src="${tutorialVideoUrl}" type="video/mp4" />
+              このブラウザでは動画を再生できません。
+            </video>
+            <div class="m2-rulebook-video-fallback" data-video-fallback hidden>
+              <strong>動画を読み込めませんでした</strong>
+              <p>文章版のルールブックはそのまま利用できます。</p>
+              <button type="button" data-action="show-rulebook-text">文章版を開く</button>
+            </div>
+          </div>
+        </section>
+
+        <div class="m2-rulebook-text-panel" data-rulebook-panel="text" hidden>
+
         <section class="m2-rulebook-live" aria-labelledby="rulebook-live-title">
           <div class="m2-rulebook-copy">
             <span class="m2-kicker">LIVE OPERATION</span>
@@ -356,7 +384,7 @@ const initialMarkup = `
               <b>4. モードを終える</b><p>選択中の <strong>撤去</strong> / <strong>再施工</strong> をもう一度押すと、通常状態へ戻ります。</p>
             </article>
           </div>
-          <p class="m2-rulebook-note"><b>補修材とは:</b> 撤去したテトリスミノを、別の場所へ再施工するための資材です。最大3個まで貯められます。</p>
+          <p class="m2-rulebook-note"><b>撤去と再施工の基本:</b> 撤去した数だけ補修材が増え、同じ数だけ再施工できます。どちらも最大3個。補修材が3個になったら、再施工で使うまで次の撤去はできません。</p>
           <section class="m2-rulebook-invalid-section" aria-labelledby="rulebook-invalid-title">
             <h4 id="rulebook-invalid-title">操作できない場所もあります</h4>
             <div class="m2-rulebook-invalid-grid">
@@ -477,6 +505,7 @@ const initialMarkup = `
           <button class="m2-primary-button" type="button" data-action="open-stage">現場を選ぶ</button>
           <p>迷ったら、まず <b>分析</b> → <b>撤去</b> → <b>再施工</b> の順で整えましょう。</p>
         </footer>
+        </div>
       </div>
     </section>
 
@@ -565,10 +594,21 @@ const initialMarkup = `
 `;
 
 const setScreen = (screen: Screen) => {
+  if (screen !== "rulebook") app.querySelector<HTMLVideoElement>("[data-rulebook-video]")?.pause();
   state.screen = screen;
   screens().forEach((element) => {
     element.hidden = element.dataset.screen !== screen;
   });
+};
+
+const setRulebookMode = (mode: "video" | "text") => {
+  app.querySelectorAll<HTMLElement>("[data-rulebook-panel]").forEach((panel) => {
+    panel.hidden = panel.dataset.rulebookPanel !== mode;
+  });
+  app.querySelectorAll<HTMLButtonElement>("[data-rulebook-mode]").forEach((button) => {
+    button.dataset.active = button.dataset.rulebookMode === mode ? "true" : "false";
+  });
+  if (mode === "text") app.querySelector<HTMLVideoElement>("[data-rulebook-video]")?.pause();
 };
 
 const applySettings = () => {
@@ -829,9 +869,12 @@ const renderResult = () => {
   if (!modal) return;
   modal.hidden = !state.cleared && !state.gameOver;
   if (modal.hidden) return;
+  modal.dataset.outcome = state.cleared ? "clear" : "failure";
+  const trainingFailure = state.currentStageId === 1;
+  const remainingLines = Math.max(0, currentStage().targetLines - state.lines);
   modal.innerHTML = state.cleared
     ? `<span>TRAINING COMPLETE</span><strong>${currentStage().name} 完了！</strong><p>${currentStage().targetLines}ラインを消去しました。管理連鎖の感覚を掴めています。</p><button type="button" data-action="restart-game">もう一度</button>${state.currentStageId < STAGES.length ? `<button type="button" data-action="next-stage">次の現場へ</button>` : ""}<button type="button" data-action="exit-game">現場を出る</button>`
-    : `<span>SITE COLLAPSE</span><strong>現場崩壊</strong><p>危険度が限界に達しました。穴と段差を早めに整えて、AIが立て直せる状態へ戻しましょう。</p><button type="button" data-action="restart-game">再挑戦</button><button type="button" data-action="exit-game">現場を出る</button>`;
+    : `<span>${trainingFailure ? "TRAINING FAILED" : "SITE COLLAPSE"}</span><div class="m2-failure-mark" aria-hidden="true">×</div><strong>${trainingFailure ? "復旧研修 失敗" : "現場崩壊"}</strong><p>${trainingFailure ? "現場を守り切れませんでした。撤去と再施工の順番を変えて、もう一度立て直しましょう。" : "危険度が限界に達しました。穴と段差を早めに整えて、AIが立て直せる状態へ戻しましょう。"}</p><small class="m2-failure-progress">消去ライン ${state.lines} / ${currentStage().targetLines}　残り ${remainingLines}</small><button type="button" data-action="restart-game">再挑戦</button><button type="button" data-action="exit-game">現場を出る</button>`;
 };
 
 const renderPause = () => {
@@ -919,9 +962,10 @@ const finishGame = (outcome: "clear" | "collapse") => {
     feedback("special");
     flashBoard("special");
   } else {
-    showToast("現場崩壊。早めの介入が必要です。", "warn", 2600);
-    speak("asuton", "……修正を推奨します。", 2400);
+    showToast(state.currentStageId === 1 ? "復旧研修失敗。現場を守り切れませんでした。" : "現場崩壊。早めの介入が必要です。", "warn", 3000);
+    speak("miston", "……次は、絶対に立て直そう。", 2800);
     feedback("big");
+    flashBoard("danger");
   }
   render();
 };
@@ -1298,6 +1342,9 @@ const applyBoardSkill = (x: number, y: number) => {
 const runSpecial = () => {
   const snapshot = engine.getSnapshot();
   const cells = snapshot.cells;
+  // Preserve the holes that existed when the special was activated. Removing
+  // their covering surface first can make them stop qualifying as holes.
+  const emergencyPatchTargets = analyzeBoard(cells).holePositions.slice(0, 2);
   const useAnalysisTargets = state.analysisActive && state.analysisSpecialReady && state.analysisTargets.length > 0;
   const removals = useAnalysisTargets
     ? [...state.analysisTargets]
@@ -1317,10 +1364,8 @@ const runSpecial = () => {
   }
   const removed = removals
     .filter((position) => engine.removeSurfaceBlock(position));
-  const diagnostics = analyzeBoard(engine.getSnapshot().cells);
-  const patched = diagnostics.holePositions
-    .slice(0, 2)
-    .filter((position) => engine.placeTemporaryPatch(position));
+  const patched = emergencyPatchTargets
+    .filter((position) => engine.placeEmergencyPatch(position));
   state.specialGauge = 0;
   state.recoveryWindow = 5;
   state.managementChain = Math.max(2, state.managementChain + 1);
@@ -1390,6 +1435,8 @@ const bindEvents = () => {
     const action = target.closest<HTMLElement>("[data-action]")?.dataset.action;
     if (action === "open-stage") setScreen("stage");
     if (action === "open-rulebook") setScreen("rulebook");
+    if (action === "show-rulebook-video") setRulebookMode("video");
+    if (action === "show-rulebook-text") setRulebookMode("text");
     if (action === "show-title") setScreen("title");
     if (action === "open-settings") openSettings();
     if (action === "close-settings") closeSettings();
@@ -1418,6 +1465,12 @@ export const mountManagerII = () => {
   app.innerHTML = initialMarkup;
   app.addEventListener("dblclick", (event) => event.preventDefault());
   bindEvents();
+  const tutorialVideo = app.querySelector<HTMLVideoElement>("[data-rulebook-video]");
+  tutorialVideo?.addEventListener("error", () => {
+    const fallback = app.querySelector<HTMLElement>("[data-video-fallback]");
+    if (fallback) fallback.hidden = false;
+  });
+  setRulebookMode("video");
   setScreen("title");
   applySettings();
   render();
