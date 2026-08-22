@@ -186,6 +186,14 @@ export class TetrisEngine {
     return this.board.setCell(position, "PATCH");
   }
 
+  placeEmergencyPatch(position: BoardPosition): boolean {
+    if (this.isGameOver || this.board.getCell(position) !== null) {
+      return false;
+    }
+
+    return this.board.setCell(position, "PATCH");
+  }
+
   placeRepairBlock(position: BoardPosition): boolean {
     if (this.isGameOver || !this.board.isRebuildableCell(position)) {
       return false;
