@@ -248,7 +248,9 @@ def main():
         subprocess.run(["say","-v","Kyoko","-r",speech_rate,"-o",str(p),scene[3]],check=True)
         info=subprocess.check_output(["afinfo",str(p)],text=True)
         match=re.search(r"estimated duration:\s*([0-9.]+) sec",info)
-        voice_duration=float(match.group(1)) if match else scene[0]
+        voice_duration=float(match.group(1)) if match else 0
+        if voice_duration <= 0:
+            raise RuntimeError(f"Narration generation failed: {p}")
         tail_padding = 2.0 if i < 4 else 1.5
         runtime_scenes.append((max(scene[0],voice_duration+tail_padding),*scene[1:]))
         voices.append(p)
@@ -271,13 +273,19 @@ def main():
     for v in voices: cmd += ["-i",str(v)]
     # Keep the low ambient tone well behind speech. On small phone speakers the
     # previous level masked syllables around the opening's "AIを支える" line.
-    filters=["[1:a]volume=0.035[bed]"]; labels=[]; offset=0
+    filters=["[1:a]volume=0.018[bed]"]; labels=[]; offset=0
     for i,scene in enumerate(runtime_scenes):
         lead_in = .55 if i < 4 else .4
         delay=round((offset+lead_in)*1000); label=f"v{i}"
-        filters.append(f"[{i+2}:a]volume=1.3,adelay={delay}|{delay}[{label}]")
+        filters.append(
+            f"[{i+2}:a]highpass=f=80,lowpass=f=10000,"
+            f"loudnorm=I=-16:TP=-2:LRA=7,adelay={delay}|{delay}[{label}]"
+        )
         labels.append(f"[{label}]"); offset+=scene[0]
-    filters.append(f"[bed]{''.join(labels)}amix=inputs={len(labels)+1}:duration=first:normalize=0[a]")
+    filters.append(
+        f"[bed]{''.join(labels)}amix=inputs={len(labels)+1}:duration=first:normalize=0,"
+        "alimiter=limit=0.95[a]"
+    )
     cmd += ["-filter_complex",";".join(filters),"-map","0:v","-map","[a]","-c:v","copy","-c:a","aac","-b:a","192k","-t",f"{total:.2f}","-movflags","+faststart",str(output)]
     subprocess.run(cmd,check=True)
     print(output)
