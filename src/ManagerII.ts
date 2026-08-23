@@ -9,7 +9,7 @@ import mistonUrl from "../miston.png";
 
 const rulebookGameplayUrl = `${import.meta.env.BASE_URL}rulebook/gameplay-live.png`;
 const rulebookAnalysisUrl = `${import.meta.env.BASE_URL}rulebook/priority-analysis.png`;
-const tutorialVideoUrl = `${import.meta.env.BASE_URL}tutorial/tetris-manager-mobile-tutorial.mp4?v=20260823-voice`;
+const tutorialVideoUrl = `${import.meta.env.BASE_URL}tutorial/tetris-manager-mobile-tutorial.mp4?v=20260823-captions`;
 
 const app = document.querySelector<HTMLDivElement>("#app");
 
