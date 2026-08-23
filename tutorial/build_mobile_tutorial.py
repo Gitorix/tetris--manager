@@ -145,28 +145,23 @@ def header(im, title, subtitle, index, progress):
 def caption(im, text, t, duration):
     d = ImageDraw.Draw(im, "RGBA")
     fade = min(1.0, t / .25, max(0.0, duration - t) / .35)
-    alpha = int(246 * fade)
+    alpha = int(232 * fade)
     lines = []
     for paragraph in text.split("\n"):
         lines.extend(textwrap.wrap(paragraph, width=26) or [""])
     lines = lines[:2]
     height = 58 if len(lines) == 1 else 91
-    box = (38, 132, 682, 132 + height)
     d.rounded_rectangle(
-        box, 16,
-        fill=(19, 31, 72, alpha), outline=(255, 210, 74, int(245 * fade)), width=4,
-    )
-    d.rounded_rectangle(
-        (52, 140, 60, 124 + height), 4,
-        fill=(255, 218, 84, int(255 * fade)),
+        (38, 132, 682, 132 + height), 16,
+        fill=(1, 10, 24, alpha), outline=(86, 232, 255, int(225 * fade)), width=3,
     )
     y = 132 + height / 2
     for offset, line in enumerate(lines):
         line_y = y + (offset - (len(lines) - 1) / 2) * 34
         d.text(
-            (370, line_y), line, font=fnt(21), anchor="mm",
+            (360, line_y), line, font=fnt(21), anchor="mm",
             fill=(244, 251, 255, int(255 * fade)),
-            stroke_width=2, stroke_fill=(3, 8, 24, int(245 * fade)),
+            stroke_width=2, stroke_fill=(0, 5, 14, int(230 * fade)),
         )
 
 
