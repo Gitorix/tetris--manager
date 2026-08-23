@@ -4,7 +4,6 @@ import math
 import re
 import subprocess
 import sys
-import textwrap
 import wave
 from pathlib import Path
 
@@ -41,19 +40,6 @@ SCENES = [
     (12.0, "緊急復旧工事", "撤去 + 穴へ仮設ブロックを最大2個追加", "ゲージが百パーセントなら、緊急復旧工事を発動できます。分析の直後は、光った三個を狙い撃ち。単独なら、露出した四個を広く撤去します。さらにどちらも、穴に仮設ブロックを最大二個追加します。", "finisher"),
     (6.0, "現場へ戻ろう", "監視 → 撤去 → 搬入 → 再施工", "盤面を監視し、必要な仕事だけを選ぶ。それがテトリスの管理人です。現場を復旧しましょう。", "end"),
 ]
-
-CAPTIONS = {
-    "overview": "AIが自動で積む盤面を、管理人として支えます。",
-    "mission": "穴や邪魔な段差を直し、1列そろえて消すゲームです。",
-    "remove": "撤去ボタンを押し、光った一番上のブロックをタップ。",
-    "rebuild": "回収した補修材で、支えのある空きマスを埋めます。",
-    "cycle": "撤去は最大3個。撤去した数だけ再施工できます。",
-    "delivery": "補修材が足りない時は、資材搬入で2個追加。",
-    "inspect": "見る場所は、穴・高い段差・一番上のブロック。",
-    "analysis": "撤去分析で、優先して撤去する3個が光ります。",
-    "finisher": "分析後は光った3個、単独なら露出4個を撤去。\nどちらも穴へ仮設ブロックを最大2個追加します。",
-    "end": "監視 → 撤去・搬入 → 再施工。現場を復旧しましょう。",
-}
 
 
 def fit_crop(raw: Image.Image, crop, box):
@@ -140,29 +126,6 @@ def header(im, title, subtitle, index, progress):
     d.text((671,56), str(index+1), font=fnt(27), anchor="mm", fill="white")
     d.rounded_rectangle((22,1260,698,1268), 4, fill=(255,255,255,45))
     d.rounded_rectangle((22,1260,22+676*progress,1268), 4, fill=(83,235,255,240))
-
-
-def caption(im, text, t, duration):
-    d = ImageDraw.Draw(im, "RGBA")
-    fade = min(1.0, t / .25, max(0.0, duration - t) / .35)
-    alpha = int(232 * fade)
-    lines = []
-    for paragraph in text.split("\n"):
-        lines.extend(textwrap.wrap(paragraph, width=26) or [""])
-    lines = lines[:2]
-    height = 58 if len(lines) == 1 else 91
-    d.rounded_rectangle(
-        (38, 132, 682, 132 + height), 16,
-        fill=(1, 10, 24, alpha), outline=(86, 232, 255, int(225 * fade)), width=3,
-    )
-    y = 132 + height / 2
-    for offset, line in enumerate(lines):
-        line_y = y + (offset - (len(lines) - 1) / 2) * 34
-        d.text(
-            (360, line_y), line, font=fnt(21), anchor="mm",
-            fill=(244, 251, 255, int(255 * fade)),
-            stroke_width=2, stroke_fill=(0, 5, 14, int(230 * fade)),
-        )
 
 
 def pill(im, xy, text, color=(255,224,70), fill=(2,18,35,235), size=22):
@@ -260,7 +223,6 @@ def render(scene, index, t, progress):
             d.text((115,y),text,font=fnt(28),anchor="lm",fill="white")
 
     header(im,title,subtitle,index,progress)
-    caption(im, CAPTIONS[mode], t, seconds)
     return im.convert("RGB")
 
 
