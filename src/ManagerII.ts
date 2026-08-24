@@ -10,6 +10,14 @@ import mistonUrl from "../miston.png";
 const rulebookGameplayUrl = `${import.meta.env.BASE_URL}rulebook/gameplay-live.png`;
 const rulebookAnalysisUrl = `${import.meta.env.BASE_URL}rulebook/priority-analysis.png`;
 const tutorialVideoUrl = `${import.meta.env.BASE_URL}tutorial/tetris-manager-mobile-tutorial.mp4?v=20260823-voice`;
+const cutinUrls = {
+  asutonSkill: `${import.meta.env.BASE_URL}cutins/asuton-skill.png`,
+  mintonSkill: `${import.meta.env.BASE_URL}cutins/minton-skill.png`,
+  mistonSkill: `${import.meta.env.BASE_URL}cutins/miston-skill.png`,
+  mistonCombo: `${import.meta.env.BASE_URL}cutins/miston-combo.png`,
+  mintonCombo: `${import.meta.env.BASE_URL}cutins/minton-combo.png`,
+  asutonCombo: `${import.meta.env.BASE_URL}cutins/asuton-combo.png`,
+} as const;
 
 const app = document.querySelector<HTMLDivElement>("#app");
 
@@ -28,16 +36,25 @@ type StageConfig = {
 };
 
 const STAGES: StageConfig[] = [
-  { id: 1, name: "復旧研修 01", targetLines: 10, fallStepMs: 88, turnGapMs: 1320, mistakeSeverity: 0.64, initialRows: ["II..OO..TT", "....O....."] },
-  { id: 2, name: "復旧現場 02", targetLines: 14, fallStepMs: 70, turnGapMs: 1020, mistakeSeverity: 0.75, initialRows: ["LL..OO..JJ", ".L..O...J.", "....T....."] },
-  { id: 3, name: "復旧現場 03", targetLines: 16, fallStepMs: 57, turnGapMs: 860, mistakeSeverity: 0.84, initialRows: ["SS..OO..ZZ", ".SS..O..ZZ", "....TTT...", ".....T...."] },
-  { id: 4, name: "復旧現場 04", targetLines: 18, fallStepMs: 46, turnGapMs: 720, mistakeSeverity: 0.91, initialRows: ["LL..OO..JJ", ".L..O...J.", "..L...TT..", "...S..T...", "....SS...."] },
-  { id: 5, name: "復旧現場 05", targetLines: 20, fallStepMs: 37, turnGapMs: 590, mistakeSeverity: 0.96, initialRows: ["ZZ..OO..SS", ".ZZ.OO.SS.", "LL..T...JJ", ".L.TTT...J", "..L..I....", "....I....."] },
-  { id: 6, name: "復旧現場 06", targetLines: 24, fallStepMs: 30, turnGapMs: 480, mistakeSeverity: 0.99, initialRows: ["JJ..OO..LL", ".J..OO...L", ".J.TTT.L..", "...T.SS...", "....SS....", "....Z....."] },
-  { id: 7, name: "復旧現場 07", targetLines: 28, fallStepMs: 24, turnGapMs: 390, mistakeSeverity: 1, initialRows: ["ZZ..OO..SS", ".ZZ.OO.SS.", "LL..TT..JJ", ".L.TTT...J", "..L...I...", "....III...", ".....I...."] },
+  { id: 1, name: "復旧研修 01", targetLines: 10, fallStepMs: 70, turnGapMs: 1080, mistakeSeverity: 0.72, initialRows: ["II..OO..TT", "....O...T.", "......S..."] },
+  { id: 2, name: "復旧現場 02", targetLines: 14, fallStepMs: 57, turnGapMs: 900, mistakeSeverity: 0.81, initialRows: ["LL..OO..JJ", ".L..O...J.", "....TTT...", ".....T...."] },
+  { id: 3, name: "復旧現場 03", targetLines: 16, fallStepMs: 47, turnGapMs: 760, mistakeSeverity: 0.88, initialRows: ["SS..OO..ZZ", ".SS..O..ZZ", "LL..TT..JJ", ".L...T...J", "..L......."] },
+  { id: 4, name: "復旧現場 04", targetLines: 18, fallStepMs: 39, turnGapMs: 640, mistakeSeverity: 0.94, initialRows: ["LL..OO..JJ", ".L..O...J.", "..L...TT..", "...S..T...", "....SS....", ".....Z...."] },
+  { id: 5, name: "復旧現場 05", targetLines: 21, fallStepMs: 33, turnGapMs: 540, mistakeSeverity: 0.97, initialRows: ["ZZ..OO..SS", ".ZZ.OO.SS.", "LL..T...JJ", ".L.TTT...J", "..L..I....", "....I.....", "......Z..."] },
+  { id: 6, name: "復旧現場 06", targetLines: 25, fallStepMs: 28, turnGapMs: 455, mistakeSeverity: 0.99, initialRows: ["JJ..OO..LL", ".J..OO...L", ".J.TTT.L..", "...T.SS...", "....SS....", "....Z.....", ".....ZZ..."] },
+  { id: 7, name: "復旧現場 07", targetLines: 29, fallStepMs: 24, turnGapMs: 390, mistakeSeverity: 1, initialRows: ["ZZ..OO..SS", ".ZZ.OO.SS.", "LL..TT..JJ", ".L.TTT...J", "..L...I...", "....III...", ".....I....", "......Z..."] },
+  { id: 8, name: "復旧現場 08", targetLines: 32, fallStepMs: 22, turnGapMs: 350, mistakeSeverity: 1, initialRows: ["LL..OO..JJ", ".L..OO...J", "SS..TT..ZZ", ".SS.T...ZZ", "..L..I....", "....II....", ".....I....", "...Z......"] },
+  { id: 9, name: "復旧現場 09", targetLines: 35, fallStepMs: 20, turnGapMs: 320, mistakeSeverity: 1, initialRows: ["ZZ..OO..SS", ".ZZ.OO.SS.", "LL..TT..JJ", ".L.TTT...J", "..L...I...", "....III...", ".....I....", "..S..Z....", "...SSZZ..."] },
+  { id: 10, name: "復旧現場 10", targetLines: 38, fallStepMs: 18, turnGapMs: 290, mistakeSeverity: 1, initialRows: ["JJ..OO..LL", ".J..OO...L", ".J.TTT.L..", "...T.SS...", "ZZ..SS..ZZ", ".ZZ..I.ZZ.", "....III...", ".....I....", "..L......."] },
+  { id: 11, name: "復旧現場 11", targetLines: 41, fallStepMs: 17, turnGapMs: 265, mistakeSeverity: 1, initialRows: ["LL..OO..JJ", ".L..OO...J", "SS..TT..ZZ", ".SS.T...ZZ", "..L..I....", "....II....", ".....I....", "...Z..S...", "..ZZ.SS...", "......S..."] },
+  { id: 12, name: "復旧現場 12", targetLines: 44, fallStepMs: 16, turnGapMs: 240, mistakeSeverity: 1, initialRows: ["ZZ..OO..SS", ".ZZ.OO.SS.", "LL..TT..JJ", ".L.TTT...J", "..L...I...", "....III...", ".....I....", "..S..Z....", "...SSZZ...", "....L....."] },
+  { id: 13, name: "復旧現場 13", targetLines: 47, fallStepMs: 15, turnGapMs: 220, mistakeSeverity: 1, initialRows: ["JJ..OO..LL", ".J..OO...L", ".J.TTT.L..", "...T.SS...", "ZZ..SS..ZZ", ".ZZ..I.ZZ.", "....III...", ".....I....", "..L...S...", "...LLSS...", "....L....."] },
+  { id: 14, name: "復旧現場 14", targetLines: 50, fallStepMs: 14, turnGapMs: 200, mistakeSeverity: 1, initialRows: ["LL..OO..JJ", ".L..OO...J", "SS..TT..ZZ", ".SS.T...ZZ", "..L..I....", "....II....", ".....I....", "...Z..S...", "..ZZ.SS...", "....L.S...", "...LL....."] },
+  { id: 15, name: "復旧現場 15", targetLines: 54, fallStepMs: 13, turnGapMs: 180, mistakeSeverity: 1, initialRows: ["ZZ..OO..SS", ".ZZ.OO.SS.", "LL..TT..JJ", ".L.TTT...J", "..L...I...", "....III...", ".....I....", "..S..Z....", "...SSZZ...", "..L...J...", ".LL...JJ..", "..L...J..."] },
 ];
 const STAGE_STORAGE_KEY = "tetris-manager-unlocked-stage-v1";
-const ANALYSIS_MS = 2000;
+const SKILL_CUTIN_MS = 1000;
+const COMBO_CUTIN_MS = 2000;
 const TOAST_MS = 1800;
 const FLASH_MS = 480;
 const MAX_SPECIAL_GAUGE = 100;
@@ -56,6 +73,7 @@ type GameSettings = {
 };
 
 const SETTINGS_STORAGE_KEY = "tetris-manager-settings-v1";
+const SKILL_PROGRESSION_STORAGE_KEY = "tetris-manager-skill-progression-v1";
 const defaultSettings: GameSettings = {
   vibration: true,
   sound: true,
@@ -74,6 +92,22 @@ const readSettings = (): GameSettings => {
 
 const settings = readSettings();
 
+type SkillProgression = { skillBlocks: number; levels: Record<CharacterId, number>; cycleChosen: CharacterId[] };
+const defaultSkillProgression: SkillProgression = { skillBlocks: 0, levels: { miston: 0, minton: 0, asuton: 0 }, cycleChosen: [] };
+const readSkillProgression = (): SkillProgression => {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(SKILL_PROGRESSION_STORAGE_KEY) ?? "{}") as Partial<SkillProgression>;
+    const levels = saved.levels ?? defaultSkillProgression.levels;
+    return {
+      skillBlocks: Math.max(0, Number(saved.skillBlocks) || 0),
+      levels: { miston: Math.min(2, Math.max(0, Number(levels.miston) || 0)), minton: Math.min(2, Math.max(0, Number(levels.minton) || 0)), asuton: Math.min(2, Math.max(0, Number(levels.asuton) || 0)) },
+      cycleChosen: Array.isArray(saved.cycleChosen) ? saved.cycleChosen.filter((id): id is CharacterId => ["miston", "minton", "asuton"].includes(id)) : [],
+    };
+  } catch { return structuredClone(defaultSkillProgression); }
+};
+let skillProgression = readSkillProgression();
+const saveSkillProgression = () => window.localStorage.setItem(SKILL_PROGRESSION_STORAGE_KEY, JSON.stringify(skillProgression));
+
 type OperatorState = {
   screen: Screen;
   playing: boolean;
@@ -82,13 +116,19 @@ type OperatorState = {
   cleared: boolean;
   turn: number;
   lines: number;
-  managementChain: number;
   recoveryWindow: number;
+  removedBlocks: number;
+  rebuiltBlocks: number;
+  balanceReward: number;
+  balanceRewardApplied: boolean;
+  upgradeCharacter: CharacterId | null;
+  upgradePausedGame: boolean;
   specialGauge: number;
   repairMaterials: number;
   deliveryCooldown: number;
   currentStageId: number;
   selectedSkill: Skill | null;
+  cinematicActive: boolean;
   analysisActive: boolean;
   analysisSpecialReady: boolean;
   analysisTargets: BoardPosition[];
@@ -112,13 +152,19 @@ const state: OperatorState = {
   cleared: false,
   turn: 0,
   lines: 0,
-  managementChain: 0,
   recoveryWindow: 0,
+  removedBlocks: 0,
+  rebuiltBlocks: 0,
+  balanceReward: 0,
+  balanceRewardApplied: false,
+  upgradeCharacter: null,
+  upgradePausedGame: false,
   specialGauge: 0,
   repairMaterials: 0,
   deliveryCooldown: 0,
   currentStageId: 1,
   selectedSkill: null,
+  cinematicActive: false,
   analysisActive: false,
   analysisSpecialReady: false,
   analysisTargets: [],
@@ -144,6 +190,7 @@ let specialImpactTimer: number | null = null;
 let progressWatchdogTimer: number | null = null;
 let operationEffectTimer: number | null = null;
 let materialFlashTimer: number | null = null;
+let cinematicTimer: number | null = null;
 let aiTurnDueAt = 0;
 let dropDueAt = 0;
 let analysisEndsAt = 0;
@@ -157,7 +204,15 @@ const readUnlockedStage = () => {
 let unlockedStageId = readUnlockedStage();
 
 const currentStage = () => STAGES.find((stage) => stage.id === state.currentStageId) ?? STAGES[0];
-const maxRepairMaterials = () => EARLY_STAGE_REPAIR_MATERIAL_LIMIT;
+const maxRepairMaterials = () => EARLY_STAGE_REPAIR_MATERIAL_LIMIT + skillProgression.levels.miston;
+const deliveryAmount = () => 2 + skillProgression.levels.minton;
+const analysisRemovalLimit = () => 3 + skillProgression.levels.asuton;
+const analysisRebuildLimit = () => 3 + (skillProgression.levels.asuton >= 2 ? 1 : 0);
+const normalSpecialRemovalLimit = () => 5 + ((["miston", "minton", "asuton"] as CharacterId[]).every((id) => skillProgression.levels[id] >= 1) ? 1 : 0);
+const balanceDifference = () => Math.abs(state.removedBlocks - state.rebuiltBlocks);
+const balanceRewardFor = (difference: number) => difference === 0 ? 2 : difference <= 1 ? 1 : difference <= 2 ? 0.5 : 0;
+const characterNames: Record<CharacterId, string> = { miston: "ミストン", minton: "ミントン", asuton: "アストン" };
+const canUpgradeCharacter = (id: CharacterId) => skillProgression.skillBlocks >= 10 && skillProgression.levels[id] < 2 && !skillProgression.cycleChosen.includes(id);
 
 const createInitialBoard = (stage: StageConfig): BoardCell[][] => {
   const cells: BoardCell[][] = Array.from({ length: 20 }, () => Array<BoardCell>(10).fill(null));
@@ -170,7 +225,7 @@ const createInitialBoard = (stage: StageConfig): BoardCell[][] => {
   return cells;
 };
 
-const getPriorityRemovalTargets = (cells: BoardCell[][]): BoardPosition[] => {
+const getPriorityRemovalTargets = (cells: BoardCell[][], limit = analysisRemovalLimit()): BoardPosition[] => {
   const topBlocks: BoardPosition[] = [];
   for (let x = 0; x < 10; x += 1) {
     const y = cells.findIndex((row) => row[x] !== null);
@@ -179,7 +234,37 @@ const getPriorityRemovalTargets = (cells: BoardCell[][]): BoardPosition[] => {
 
   return topBlocks
     .sort((a, b) => a.y - b.y || Math.abs(a.x - 4.5) - Math.abs(b.x - 4.5) || a.x - b.x)
-    .slice(0, 3);
+    .slice(0, limit);
+};
+
+const getEmergencyRebuildTargets = (limit: number): BoardPosition[] => {
+  const snapshot = engine.getSnapshot();
+  const activeCells = new Set(snapshot.activeCells.map(({ x, y }) => `${x},${y}`));
+  const holes = analyzeBoard(snapshot.cells).holePositions;
+  const supported: BoardPosition[] = [];
+  for (let y = snapshot.cells.length - 1; y >= 0; y -= 1) {
+    for (let x = 0; x < snapshot.cells[y].length; x += 1) {
+      const position = { x, y };
+      if (!activeCells.has(`${x},${y}`) && engine.board.isRebuildableCell(position)) supported.push(position);
+    }
+  }
+  const unique = new Map<string, BoardPosition>();
+  [...holes, ...supported].forEach((position) => {
+    if (!activeCells.has(`${position.x},${position.y}`) && engine.board.isRebuildableCell(position)) {
+      unique.set(`${position.x},${position.y}`, position);
+    }
+  });
+  return [...unique.values()].slice(0, limit);
+};
+
+const placeEmergencyRepairs = (limit: number): BoardPosition[] => {
+  const placed: BoardPosition[] = [];
+  while (placed.length < limit) {
+    const target = getEmergencyRebuildTargets(1)[0];
+    if (!target || !engine.placeRepairBlock(target)) break;
+    placed.push(target);
+  }
+  return placed;
 };
 
 const unlockStage = (stageId: number) => {
@@ -255,55 +340,17 @@ const initialMarkup = `
         <button class="m2-stage-rulebook-link" type="button" data-action="open-rulebook">ルールブックを見る</button>
         <span class="m2-kicker">PROTOTYPE 1</span>
         <h2>現場を選ぶ</h2>
-        <button class="m2-stage-card" type="button" data-action="start-game" data-stage-id="1">
-          <span class="m2-stage-card-top">TRAINING SITE</span>
-          <strong>復旧研修 01</strong>
-          <span>目標: 10ライン消去</span>
-          <small>AIの穴・段差を見極め、管理スキルで立て直す。</small>
-          <b>開始する</b>
-        </button>
-        <button class="m2-stage-card" type="button" data-action="start-game" data-stage-id="2" data-locked-stage="2">
-          <span class="m2-stage-card-top">RECOVERY SITE</span>
-          <strong>復旧現場 02</strong>
-          <span>目標: 14ライン消去 / AI高速</span>
-          <small>ミスの頻度が増加。ミントンの資材搬入も使い、連鎖を維持する。</small>
-          <b data-stage-lock-label>研修クリアで解放</b>
-        </button>
-        <button class="m2-stage-card" type="button" data-action="start-game" data-stage-id="3" data-locked-stage="3">
-          <span class="m2-stage-card-top">RECOVERY SITE</span>
-          <strong>復旧現場 03</strong>
-          <span>目標: 16ライン消去 / AI加速</span>
-          <small>より短い間隔で崩れが発生。資材と必殺技を計画的に使う現場です。</small>
-          <b data-stage-lock-label>前現場クリアで解放</b>
-        </button>
-        <button class="m2-stage-card" type="button" data-action="start-game" data-stage-id="4" data-locked-stage="4">
-          <span class="m2-stage-card-top">RECOVERY SITE</span>
-          <strong>復旧現場 04</strong>
-          <span>目標: 18ライン消去 / 危険配置増加</span>
-          <small>AIの失敗が明確に悪化。穴と段差を先回りして整えます。</small>
-          <b data-stage-lock-label>前現場クリアで解放</b>
-        </button>
-        <button class="m2-stage-card" type="button" data-action="start-game" data-stage-id="5" data-locked-stage="5">
-          <span class="m2-stage-card-top">RECOVERY SITE</span>
-          <strong>復旧現場 05</strong>
-          <span>目標: 20ライン消去 / 緊急現場</span>
-          <small>高速かつ連続するAIの悪手を、チーム全員で復旧する最終研修です。</small>
-          <b data-stage-lock-label>前現場クリアで解放</b>
-        </button>
-        <button class="m2-stage-card" type="button" data-action="start-game" data-stage-id="6" data-locked-stage="6">
-          <span class="m2-stage-card-top">RECOVERY SITE</span>
-          <strong>復旧現場 06</strong>
-          <span>目標: 24ライン消去 / 超高速</span>
-          <small>初期崩壊が深く、AIの悪手も連続します。分析と緊急復旧工事を切らさず使う現場です。</small>
-          <b data-stage-lock-label>前現場クリアで解放</b>
-        </button>
-        <button class="m2-stage-card" type="button" data-action="start-game" data-stage-id="7" data-locked-stage="7">
-          <span class="m2-stage-card-top">CRITICAL RECOVERY SITE</span>
-          <strong>復旧現場 07</strong>
-          <span>目標: 28ライン消去 / 極限現場</span>
-          <small>最速のAIと最大級の初期崩壊に対処する最終現場です。復旧の順番が勝敗を分けます。</small>
-          <b data-stage-lock-label>前現場クリアで解放</b>
-        </button>
+        <div class="m2-stage-list">
+          ${STAGES.map((stage) => `
+            <button class="m2-stage-card" type="button" data-action="start-game" data-stage-id="${stage.id}" ${stage.id > 1 ? `data-locked-stage="${stage.id}"` : ""}>
+              <span class="m2-stage-card-top">${stage.id === 1 ? "TRAINING SITE" : stage.id >= 12 ? "CRITICAL RECOVERY SITE" : "RECOVERY SITE"}</span>
+              <strong>${stage.name}</strong>
+              <span>目標: ${stage.targetLines}ライン消去 / 難易度 ${stage.id}</span>
+              <small>${stage.id === 1 ? "基本操作を確認しながら、崩れた盤面を立て直します。" : stage.id >= 12 ? "極限速度と深い初期崩壊に、強化したチームで対応します。" : "前の現場より速く、崩れやすい盤面を管理します。"}</small>
+              <b ${stage.id > 1 ? "data-stage-lock-label" : ""}>${stage.id === 1 ? "開始する" : stage.id === 2 ? "研修クリアで解放" : "前現場クリアで解放"}</b>
+            </button>
+          `).join("")}
+        </div>
         <p class="m2-stage-footnote">ミストン: 撤去 / 再施工　ミントン: 資材搬入　アストン: 優先撤去分析</p>
       </div>
     </section>
@@ -432,11 +479,11 @@ const initialMarkup = `
             </article>
             <article class="m2-rulebook-skill m2-rulebook-skill-astun">
               <img src="${asutonUrl}" alt="アストン" />
-              <div><span>アストン</span><h4>優先撤去分析</h4><p>AIを2秒止め、優先箇所を最大3つ光らせます。この間の必殺技は、光った3つだけを撤去します。</p></div>
+              <div><span>アストン</span><h4>優先撤去分析</h4><p>AIを1秒止め、優先箇所を最大3つ光らせます。次の緊急復旧工事は、光った3つを撤去して3つ再施工します。</p></div>
             </article>
             <article class="m2-rulebook-skill m2-rulebook-skill-special">
               <div class="m2-rulebook-special-mark">100%</div>
-              <div><span>必殺技</span><h4>緊急復旧工事</h4><p>通常は露出ブロックを最大4つ撤去。分析直後は、アストンが光らせた最大3つだけを確実に撤去します。穴は最大2つ仮設補修します。</p></div>
+              <div><span>必殺技</span><h4>緊急復旧工事</h4><p>通常は露出ブロックを最大5つ撤去。分析直後は、光った3つを確実に撤去し、盤面へ3つ再施工します。</p></div>
             </article>
           </div>
         </section>
@@ -470,19 +517,19 @@ const initialMarkup = `
                 <b>光った3個を撤去</b>
               </div>
               <h4>アストン → 必殺技</h4>
-              <p>分析中に発動すると、<strong>表示された優先箇所だけ最大3個</strong>を消します。狙いどおりに整えるための使い方です。</p>
+              <p>分析後に発動すると、<strong>表示された優先箇所を最大3個撤去し、3個を再施工</strong>します。狙いどおりに整える使い方です。</p>
             </article>
             <article>
-              <div class="m2-rulebook-special-diagram is-normal" role="img" aria-label="分析なしで必殺技を使い、露出した4つのブロックを撤去する図">
+              <div class="m2-rulebook-special-diagram is-normal" role="img" aria-label="分析なしで必殺技を使い、露出した5つのブロックを撤去する図">
                 <span class="m2-special-diagram-label">通常</span>
-                <div class="m2-special-diagram-blocks"><i></i><i></i><i></i><i></i></div>
-                <b>露出4個を撤去</b>
+                <div class="m2-special-diagram-blocks"><i></i><i></i><i></i><i></i><i></i></div>
+                <b>露出5個を撤去</b>
               </div>
               <h4>必殺技のみ</h4>
-              <p>分析を使わずに発動すると、<strong>露出したブロックを最大4個</strong>まとめて撤去します。崩壊を急いで止める使い方です。</p>
+              <p>分析を使わずに発動すると、<strong>露出したブロックを最大5個</strong>まとめて撤去します。再施工は行いません。</p>
             </article>
           </div>
-          <p class="m2-rulebook-note"><b>共通:</b> どちらも撤去後に、穴を最大2か所まで仮設補修します。</p>
+          <p class="m2-rulebook-note"><b>使い分け:</b> 通常は広く5個撤去。分析後は狙った3個を撤去し、必ず3個再施工します。</p>
         </section>
 
         <section class="m2-rulebook-section" aria-labelledby="rulebook-clear-title">
@@ -523,7 +570,7 @@ const initialMarkup = `
         <aside class="m2-side-readout" aria-label="現場情報">
           <div><span>消去ライン</span><b data-lines>0 / 10</b></div>
           <div><span>現場危険度</span><b data-danger-value>0</b><i data-danger-label>安全</i></div>
-          <div><span>管理連鎖</span><b data-chain>--</b></div>
+          <div class="m2-balance-readout"><span>管理バランス</span><b data-balance>撤去 0 / 搬入 0</b><i data-skill-blocks>スキルUP 0個</i></div>
         </aside>
 
         <section class="m2-board-frame" data-board-frame aria-label="AIプレイ盤面">
@@ -534,20 +581,11 @@ const initialMarkup = `
               return `<button type="button" class="m2-board-cell" data-board-cell data-x="${x}" data-y="${y}" aria-label="${y + 1}行 ${x + 1}列"></button>`;
             }).join("")}
           </div>
-          <section class="m2-board-overlay" aria-live="polite">
-            <div class="m2-overlay-head">
-              <span data-ai-state>AI 自動配置中</span>
-              <span class="m2-next-piece">NEXT ${getTetrominoIcon("T")}</span>
-            </div>
-            <strong data-issue-title>現場を監視しています</strong>
-            <span data-issue-description>穴・段差・偏りを見つけたら、管理スキルで介入してください。</span>
-            <div class="m2-danger-strip"><i data-danger-fill></i></div>
-            <span class="m2-board-toast" data-toast data-tone="info">現場を選んでください</span>
-          </section>
           <div class="m2-analysis-layer" data-analysis-layer hidden aria-hidden="true"></div>
           <div class="m2-clear-burst" data-clear-burst hidden>現場復旧！</div>
           <div class="m2-skill-flash" data-skill-flash hidden aria-hidden="true"></div>
           <section class="m2-result-modal" data-result-modal hidden aria-live="assertive"></section>
+          <section class="m2-upgrade-modal" data-upgrade-modal hidden aria-live="polite"></section>
           <section class="m2-pause-modal" data-pause-modal hidden>
             <strong>一時停止</strong>
             <button type="button" data-action="resume-game">再開</button>
@@ -560,7 +598,8 @@ const initialMarkup = `
         <aside class="m2-operator-panel" aria-label="管理人チーム">
           <div class="m2-operator-copy" data-character-copy>アストン: 現場を監視中です。</div>
           <div class="m2-crew-row">
-            <article class="m2-character-card" data-character="miston">
+            <article class="m2-character-card" data-character="miston" data-upgrade-character="miston">
+              <em class="m2-upgrade-callout" data-upgrade-callout="miston" hidden>スキルアップ可能</em>
               <img src="${mistonUrl}" alt="ミストン" />
               <div><b>ミストン</b><span>現場補修</span><em class="m2-miston-callout" data-miston-callout>様子見</em><small class="m2-material-stock">補修材 <i data-repair-pips></i><strong data-repair-count>×0</strong></small></div>
               <div class="m2-skill-actions">
@@ -568,12 +607,14 @@ const initialMarkup = `
                 <button type="button" data-skill="rebuild">再施工</button>
               </div>
             </article>
-            <article class="m2-character-card" data-character="minton">
+            <article class="m2-character-card" data-character="minton" data-upgrade-character="minton">
+              <em class="m2-upgrade-callout" data-upgrade-callout="minton" hidden>スキルアップ可能</em>
               <img src="${mintonUrl}" alt="ミントン" />
               <div><b>ミントン</b><span>資材搬入</span><em class="m2-minton-callout" data-minton-callout>資材待機</em></div>
               <button type="button" data-skill="delivery" data-delivery-button>資材搬入</button>
             </article>
-            <article class="m2-character-card" data-character="asuton">
+            <article class="m2-character-card" data-character="asuton" data-upgrade-character="asuton">
+              <em class="m2-upgrade-callout" data-upgrade-callout="asuton" hidden>スキルアップ可能</em>
               <img src="${asutonUrl}" alt="アストン" />
               <div><b>アストン</b><span>優先撤去分析</span></div>
               <button type="button" data-skill="analysis">撤去分析</button>
@@ -583,11 +624,12 @@ const initialMarkup = `
             <span>緊急復旧工事</span>
             <i><b data-special-gauge></b></i>
             <strong data-special-label>緊急復旧工事 0%</strong>
-            <em data-special-detail>100%で露出4撤去 + 穴2仮設補修</em>
+            <em data-special-detail>100%で露出5個を撤去</em>
           </button>
         </aside>
       </div>
       <div class="m2-operation-effect" data-operation-effect hidden aria-hidden="true"></div>
+      <div class="m2-character-cutin" data-character-cutin hidden aria-hidden="true"></div>
       <p class="m2-action-guide" data-action-guide>ミストンのスキルを選び、盤面の対象マスをタップしてください。</p>
     </section>
   </main>
@@ -653,6 +695,7 @@ const stopGameTimers = () => {
   clearTimer(specialImpactTimer);
   clearTimer(operationEffectTimer);
   clearTimer(materialFlashTimer);
+  clearTimer(cinematicTimer);
   if (progressWatchdogTimer !== null) window.clearInterval(progressWatchdogTimer);
   aiTurnTimer = null;
   dropTimer = null;
@@ -663,6 +706,7 @@ const stopGameTimers = () => {
   specialImpactTimer = null;
   operationEffectTimer = null;
   materialFlashTimer = null;
+  cinematicTimer = null;
   progressWatchdogTimer = null;
   aiTurnDueAt = 0;
   dropDueAt = 0;
@@ -797,7 +841,6 @@ const render = () => {
 
   boardFrame()?.setAttribute("data-danger", diagnostics.level);
   boardFrame()?.setAttribute("data-interaction", state.selectedSkill ?? "");
-  const [issueTitle, issueDescription] = getIssueCopy(state.activePlan);
   const setText = (selector: string, text: string) => {
     const element = app.querySelector<HTMLElement>(selector);
     if (element) element.textContent = text;
@@ -806,35 +849,26 @@ const render = () => {
   setText("[data-stage-name]", currentStage().name);
   setText("[data-danger-value]", String(diagnostics.danger));
   setText("[data-danger-label]", ({ safe: "安全", caution: "注意", danger: "危険", emergency: "緊急", collapse: "崩壊寸前" } as const)[diagnostics.level]);
-  setText("[data-chain]", state.managementChain > 1 ? `管理連鎖 x${state.managementChain}` : "待機");
-  setText("[data-issue-title]", issueTitle);
-  setText("[data-issue-description]", issueDescription);
-  setText("[data-ai-state]", state.paused ? "AI 一時停止中" : snapshot.hasActiveTetromino ? "AI 配置中" : "AI 自動配置中");
-  setText("[data-toast]", state.toast);
+  setText("[data-balance]", `撤去 ${state.removedBlocks} / 搬入 ${state.rebuiltBlocks}`);
+  setText("[data-skill-blocks]", `差 ${balanceDifference()}・スキルUP ${skillProgression.skillBlocks}個`);
   setText("[data-header-summary]", state.cleared ? "現場復旧完了" : state.gameOver ? "現場が崩壊しました" : state.paused ? "作業を一時停止中" : "AIがプレイ継続中");
   setText("[data-action-guide]", state.selectedSkill === "remove" ? `連続撤去モード: 表面ブロックを続けてタップできます。補修材が${maxRepairMaterials()}個で上限です。` : state.selectedSkill === "rebuild" ? "連続再施工モード: 支えのある空きマスを続けてタップできます。補修材を使うと、再び撤去できます。" : "AIは止まりません。現場を見て、必要な時だけ管理スキルを使ってください。");
 
-  const toast = app.querySelector<HTMLElement>("[data-toast]");
-  if (toast) toast.dataset.tone = state.toastTone;
-  const next = app.querySelector<HTMLElement>(".m2-next-piece");
-  if (next) next.innerHTML = `NEXT ${getTetrominoIcon(state.nextType)}`;
-  const fill = app.querySelector<HTMLElement>("[data-danger-fill]");
-  if (fill) fill.style.width = `${diagnostics.danger}%`;
   const gauge = app.querySelector<HTMLElement>("[data-special-gauge]");
   if (gauge) gauge.style.width = `${state.specialGauge}%`;
   const label = app.querySelector<HTMLElement>("[data-special-label]");
   if (label) label.textContent = state.specialGauge >= MAX_SPECIAL_GAUGE ? "緊急復旧工事 READY - 発動できます" : `緊急復旧工事 ${state.specialGauge}%`;
   const specialButton = app.querySelector<HTMLButtonElement>("[data-skill='special']");
-  if (specialButton) specialButton.disabled = !state.playing || state.paused || state.specialGauge < MAX_SPECIAL_GAUGE;
-  setText("[data-special-detail]", state.analysisActive
-    ? "分析連動: 光った最大3個を撤去 + 穴2仮設補修"
-    : "通常: 露出4撤去 + 穴2仮設補修");
+  if (specialButton) specialButton.disabled = !state.playing || state.paused || state.cinematicActive || state.specialGauge < MAX_SPECIAL_GAUGE;
+  setText("[data-special-detail]", state.analysisSpecialReady
+    ? `分析連動: 指定${analysisRemovalLimit()}個を撤去 + 再施工${analysisRebuildLimit()}個`
+    : "通常: 露出5個を撤去");
   const removeButton = app.querySelector<HTMLButtonElement>("[data-skill='remove']");
-  if (removeButton) removeButton.disabled = !state.playing || state.paused || state.repairMaterials >= maxRepairMaterials();
+  if (removeButton) removeButton.disabled = !state.playing || state.paused || state.cinematicActive || state.repairMaterials >= maxRepairMaterials();
   const rebuildButton = app.querySelector<HTMLButtonElement>("[data-skill='rebuild']");
-  if (rebuildButton) rebuildButton.disabled = !state.playing || state.paused || state.repairMaterials <= 0;
+  if (rebuildButton) rebuildButton.disabled = !state.playing || state.paused || state.cinematicActive || state.repairMaterials <= 0;
   const deliveryButton = app.querySelector<HTMLButtonElement>("[data-delivery-button]");
-  if (deliveryButton) deliveryButton.disabled = !state.playing || state.paused || state.deliveryCooldown > 0 || state.repairMaterials >= maxRepairMaterials();
+  if (deliveryButton) deliveryButton.disabled = !state.playing || state.paused || state.cinematicActive || state.deliveryCooldown > 0 || state.repairMaterials >= maxRepairMaterials();
   setText("[data-repair-count]", `×${state.repairMaterials}`);
   const repairPips = app.querySelector<HTMLElement>("[data-repair-pips]");
   if (repairPips) repairPips.innerHTML = Array.from({ length: maxRepairMaterials() }, (_, index) => `<i data-filled="${index < state.repairMaterials}"></i>`).join("");
@@ -853,6 +887,10 @@ const render = () => {
   if (mintonCard) mintonCard.dataset.ready = mintonCue.startsWith("出番") ? "true" : "false";
   setText("[data-minton-callout]", mintonCue);
   setText("[data-character-copy]", state.characterMessage || (mistonCue !== "様子見" ? `ミストン: ${mistonCue}` : mintonCue.startsWith("出番") ? `ミントン: ${mintonCue}` : "アストン: 現場を監視中です。"));
+  (["miston", "minton", "asuton"] as CharacterId[]).forEach((id) => {
+    const callout = app.querySelector<HTMLElement>(`[data-upgrade-callout='${id}']`);
+    if (callout) callout.hidden = !canUpgradeCharacter(id);
+  });
   const skillFlash = app.querySelector<HTMLElement>("[data-skill-flash]");
   if (skillFlash) {
     skillFlash.hidden = state.skillEffect === null;
@@ -860,6 +898,7 @@ const render = () => {
   }
   renderAnalysisLayer(diagnostics);
   renderResult();
+  renderUpgradeModal();
   renderPause();
   renderStageSelection();
 };
@@ -872,9 +911,28 @@ const renderResult = () => {
   modal.dataset.outcome = state.cleared ? "clear" : "failure";
   const trainingFailure = state.currentStageId === 1;
   const remainingLines = Math.max(0, currentStage().targetLines - state.lines);
+  const balance = `<div class="m2-result-balance"><b>管理バランス 差${balanceDifference()}</b><small>撤去${state.removedBlocks} / 搬入${state.rebuiltBlocks}</small><strong>スキルUP +${state.balanceReward}</strong><small>所持 ${skillProgression.skillBlocks}/10</small><em>搬入＝再施工で戻したブロック</em></div>`;
   modal.innerHTML = state.cleared
-    ? `<span>TRAINING COMPLETE</span><strong>${currentStage().name} 完了！</strong><p>${currentStage().targetLines}ラインを消去しました。管理連鎖の感覚を掴めています。</p><button type="button" data-action="restart-game">もう一度</button>${state.currentStageId < STAGES.length ? `<button type="button" data-action="next-stage">次の現場へ</button>` : ""}<button type="button" data-action="exit-game">現場を出る</button>`
-    : `<span>${trainingFailure ? "TRAINING FAILED" : "SITE COLLAPSE"}</span><div class="m2-failure-mark" aria-hidden="true">×</div><strong>${trainingFailure ? "復旧研修 失敗" : "現場崩壊"}</strong><p>${trainingFailure ? "現場を守り切れませんでした。撤去と再施工の順番を変えて、もう一度立て直しましょう。" : "危険度が限界に達しました。穴と段差を早めに整えて、AIが立て直せる状態へ戻しましょう。"}</p><small class="m2-failure-progress">消去ライン ${state.lines} / ${currentStage().targetLines}　残り ${remainingLines}</small><button type="button" data-action="restart-game">再挑戦</button><button type="button" data-action="exit-game">現場を出る</button>`;
+    ? `<span>TRAINING COMPLETE</span><strong>${currentStage().name} 完了！</strong><p>${currentStage().targetLines}ラインを消去しました。</p>${balance}<button type="button" data-action="restart-game">もう一度</button>${state.currentStageId < STAGES.length ? `<button type="button" data-action="next-stage">次の現場へ</button>` : ""}<button type="button" data-action="exit-game">現場を出る</button>`
+    : `<span>${trainingFailure ? "TRAINING FAILED" : "SITE COLLAPSE"}</span><div class="m2-failure-mark" aria-hidden="true">×</div><strong>${trainingFailure ? "復旧研修 失敗" : "現場崩壊"}</strong><p>${trainingFailure ? "現場を守り切れませんでした。撤去と再施工の順番を変えて、もう一度立て直しましょう。" : "危険度が限界に達しました。穴と段差を早めに整えて、AIが立て直せる状態へ戻しましょう。"}</p>${balance}<small class="m2-failure-progress">消去ライン ${state.lines} / ${currentStage().targetLines}　残り ${remainingLines}</small><button type="button" data-action="restart-game">再挑戦</button><button type="button" data-action="exit-game">現場を出る</button>`;
+};
+
+const upgradeDescription = (id: CharacterId) => {
+  const nextLevel = skillProgression.levels[id] + 1;
+  if (id === "miston") return `撤去・補修材上限が ${2 + nextLevel}個から ${3 + nextLevel}個になります。`;
+  if (id === "minton") return `資材搬入が +${1 + nextLevel}個から +${2 + nextLevel}個になります。`;
+  return nextLevel === 1 ? "分析連動の緊急復旧工事が、撤去4個・再施工3個になります。" : "分析連動の緊急復旧工事が、撤去5個・再施工4個になります。";
+};
+
+const renderUpgradeModal = () => {
+  const modal = app.querySelector<HTMLElement>("[data-upgrade-modal]");
+  if (!modal) return;
+  const id = state.upgradeCharacter;
+  modal.hidden = id === null;
+  if (!id) return;
+  const level = skillProgression.levels[id];
+  const status = level >= 2 ? "最大レベルです" : skillProgression.cycleChosen.includes(id) ? "今周期は別の仲間を選んでください" : skillProgression.skillBlocks < 10 ? `あと${10 - skillProgression.skillBlocks}個必要です` : "スキルアップ可能";
+  modal.innerHTML = `<button class="m2-upgrade-close" type="button" data-action="close-upgrade" aria-label="閉じる">×</button><span>SKILL UP</span><strong>${characterNames[id]} Lv.${level}</strong><p>${level >= 2 ? "2段階のスキルアップが完了しています。" : upgradeDescription(id)}</p><div class="m2-upgrade-stock">スキルアップブロック <b>${skillProgression.skillBlocks}/10</b></div><small>${status}</small><button type="button" data-action="confirm-upgrade" ${canUpgradeCharacter(id) ? "" : "disabled"}>${level >= 2 ? "強化完了" : "スキルを強化する"}</button>`;
 };
 
 const renderPause = () => {
@@ -933,6 +991,41 @@ const showOperationEffect = (kind: "delivery" | "analysis" | "special", label: s
   }, duration);
 };
 
+type CutinFrame = { src: string; character: CharacterId; label: string };
+
+const playCharacterCutin = (frames: CutinFrame[], duration: number) => new Promise<void>((resolve) => {
+  const cutin = app.querySelector<HTMLElement>("[data-character-cutin]");
+  if (!cutin || frames.length === 0) {
+    resolve();
+    return;
+  }
+  state.cinematicActive = true;
+  aiTurnDueAt = 0;
+  dropDueAt = 0;
+  cutin.dataset.count = String(frames.length);
+  cutin.style.setProperty("--cutin-duration", `${duration}ms`);
+  cutin.innerHTML = `
+    <div class="m2-cutin-energy" aria-hidden="true"></div>
+    <div class="m2-cutin-frames">
+      ${frames.map((frame, index) => `<figure data-character="${frame.character}" style="--cutin-index:${index};--cutin-count:${frames.length}"><img src="${frame.src}" alt="" /><figcaption>${frame.label}</figcaption></figure>`).join("")}
+    </div>
+    <div class="m2-cutin-impact" aria-hidden="true"></div>
+  `;
+  cutin.hidden = false;
+  feedback(frames.length > 1 ? "special" : "big");
+  clearTimer(cinematicTimer);
+  cinematicTimer = window.setTimeout(() => {
+    cutin.hidden = true;
+    cutin.innerHTML = "";
+    state.cinematicActive = false;
+    cinematicTimer = null;
+    render();
+    resumeAIFlow(120);
+    resolve();
+  }, duration);
+  render();
+});
+
 const flashMaterialStock = (amount: number) => {
   const stock = app.querySelector<HTMLElement>(".m2-material-stock");
   if (!stock) return;
@@ -950,6 +1043,12 @@ const addGauge = (amount: number) => {
 };
 
 const finishGame = (outcome: "clear" | "collapse") => {
+  if (!state.balanceRewardApplied) {
+    state.balanceReward = balanceRewardFor(balanceDifference());
+    skillProgression.skillBlocks = Math.round((skillProgression.skillBlocks + state.balanceReward) * 2) / 2;
+    state.balanceRewardApplied = true;
+    saveSkillProgression();
+  }
   state.playing = false;
   state.paused = false;
   state.cleared = outcome === "clear";
@@ -978,17 +1077,9 @@ const applyLineClearResult = (snapshot: ReturnType<typeof engine.getSnapshot>) =
     engine.clearTemporaryPatches();
     currentSnapshot = engine.getSnapshot();
     addGauge(lines * 14);
-    if (state.recoveryWindow > 0) {
-      state.managementChain += lines;
-      addGauge(20 + lines * 7);
-      showToast(`管理連鎖 x${state.managementChain}！`, "good", 1900);
-      showClearBurst(`管理連鎖 ×${state.managementChain}`);
-      speak("miston", state.managementChain >= 3 ? "ほら、現場が動いた。" : "ええ判断。", 1800);
-    } else {
-      state.managementChain = 0;
-      showClearBurst(lines >= 2 ? `${lines} LINE CLEAR!` : "LINE CLEAR!");
-      speak("miston", lines >= 3 ? "一気にいけたな。" : "ええ感じ。", 1600);
-    }
+    if (state.recoveryWindow > 0) addGauge(20 + lines * 7);
+    showClearBurst(lines >= 2 ? `${lines} LINE CLEAR!` : "LINE CLEAR!");
+    speak("miston", lines >= 3 ? "一気にいけたな。" : "ええ感じ。", 1600);
     feedback(lines >= 3 ? "big" : "medium");
     flashBoard("clear");
   }
@@ -1003,7 +1094,6 @@ const completeTurn = () => {
   const currentSnapshot = applyLineClearResult(snapshot);
   if (snapshot.lastClearedLines === 0 && state.recoveryWindow > 0) {
     state.recoveryWindow -= 1;
-    if (state.recoveryWindow === 0) state.managementChain = 0;
   }
 
   const diagnostics = analyzeBoard(currentSnapshot.cells);
@@ -1031,7 +1121,7 @@ const scheduleDrop = (delay = currentStage().fallStepMs) => {
 
 const continueFallingPiece = () => {
   dropDueAt = 0;
-  if (!state.playing || state.paused || state.analysisActive || state.gameOver || state.cleared) return;
+  if (!state.playing || state.paused || state.analysisActive || state.cinematicActive || state.gameOver || state.cleared) return;
   const snapshot = engine.getSnapshot();
   const targetY = state.activePlan?.position.y;
 
@@ -1062,7 +1152,7 @@ const continueFallingPiece = () => {
 const runAITurn = () => {
   // 発火済みの予約を残さない。予約が消えた場合は進行監視が安全に再開できる。
   aiTurnTimer = null;
-  if (!state.playing || state.paused || state.analysisActive || state.gameOver || state.cleared || engine.getSnapshot().hasActiveTetromino) return;
+  if (!state.playing || state.paused || state.analysisActive || state.cinematicActive || state.gameOver || state.cleared || engine.getSnapshot().hasActiveTetromino) return;
   const type = state.nextType;
   const plan = mistakeAI.choosePlacement(
     type,
@@ -1094,7 +1184,7 @@ const scheduleAITurn = (delay = currentStage().turnGapMs) => {
 // AIの一手が落下中か、次の一手待ちかをここで判定して再開する。
 // スキル演出・分析・設定画面から戻る経路で止まりっぱなしにしないための共通入口。
 const resumeAIFlow = (delay = currentStage().fallStepMs) => {
-  if (!state.playing || state.paused || state.analysisActive || state.gameOver || state.cleared) return;
+  if (!state.playing || state.paused || state.analysisActive || state.cinematicActive || state.gameOver || state.cleared) return;
   aiTurnDueAt = 0;
   dropDueAt = 0;
   if (engine.getSnapshot().hasActiveTetromino) {
@@ -1109,8 +1199,6 @@ const endAnalysisPause = () => {
   analysisTimer = null;
   analysisEndsAt = 0;
   state.analysisActive = false;
-  state.analysisSpecialReady = false;
-  state.analysisTargets = [];
   render();
   resumeAIFlow(120);
 };
@@ -1118,7 +1206,7 @@ const endAnalysisPause = () => {
 // ゲーム進行を担う唯一の時計。1回の更新で1マスだけ進めるため、
 // ブラウザが一時的に重くなっても落下がまとめて実行されない。
 const ensureAIProgress = () => {
-  if (!state.playing || state.paused || state.gameOver || state.cleared) return;
+  if (!state.playing || state.paused || state.cinematicActive || state.gameOver || state.cleared) return;
   if (state.analysisActive) {
     if (analysisEndsAt > 0 && Date.now() >= analysisEndsAt) endAnalysisPause();
     return;
@@ -1166,12 +1254,18 @@ const startGame = (stageId = state.currentStageId) => {
   state.cleared = false;
   state.turn = 0;
   state.lines = 0;
-  state.managementChain = 0;
   state.recoveryWindow = 0;
+  state.removedBlocks = 0;
+  state.rebuiltBlocks = 0;
+  state.balanceReward = 0;
+  state.balanceRewardApplied = false;
+  state.upgradeCharacter = null;
+  state.upgradePausedGame = false;
   state.specialGauge = 0;
   state.repairMaterials = 0;
   state.deliveryCooldown = 0;
   state.selectedSkill = null;
+  state.cinematicActive = false;
   state.analysisActive = false;
   state.analysisSpecialReady = false;
   state.analysisTargets = [];
@@ -1186,8 +1280,8 @@ const startGame = (stageId = state.currentStageId) => {
   scheduleAITurn(850);
 };
 
-const useSkill = (skill: Skill) => {
-  if (!state.playing || state.paused || state.gameOver || state.cleared) return;
+const useSkill = async (skill: Skill) => {
+  if (!state.playing || state.paused || state.cinematicActive || state.gameOver || state.cleared) return;
   if (skill === "delivery") {
     if (state.deliveryCooldown > 0) {
       showToast(`資材搬入の準備中です。あと${state.deliveryCooldown}手待ってください。`, "warn");
@@ -1195,20 +1289,23 @@ const useSkill = (skill: Skill) => {
       render();
       return;
     }
-    const delivered = Math.min(2, maxRepairMaterials() - state.repairMaterials);
+    const delivered = Math.min(deliveryAmount(), maxRepairMaterials() - state.repairMaterials);
     if (delivered <= 0) {
       showToast("補修材は満載です。先に再施工で使いましょう。", "info");
       speak("minton", "資材は十分あります。", 1500);
       render();
       return;
     }
+    await playCharacterCutin([
+      { src: cutinUrls.mintonSkill, character: "minton", label: "資材搬入" },
+    ], SKILL_CUTIN_MS);
+    if (!state.playing || state.gameOver || state.cleared) return;
     state.repairMaterials += delivered;
     state.deliveryCooldown = 3;
     state.recoveryWindow = Math.max(state.recoveryWindow, 2);
     showToast(`資材搬入完了。補修材 +${delivered}（次の搬入まで3手）`, "good", 2200);
     speak("minton", "補修材、届けました！", 1800);
     showClearBurst(`資材搬入 +${delivered}`);
-    showOperationEffect("delivery", `資材搬入 +${delivered}`);
     flashMaterialStock(delivered);
     feedback("medium");
     flashBoard("clear");
@@ -1217,21 +1314,25 @@ const useSkill = (skill: Skill) => {
   }
   if (skill === "analysis") {
     state.selectedSkill = null;
-    state.analysisActive = true;
+    await playCharacterCutin([
+      { src: cutinUrls.asutonSkill, character: "asuton", label: "優先撤去分析" },
+    ], SKILL_CUTIN_MS);
+    if (!state.playing || state.gameOver || state.cleared) return;
     state.analysisSpecialReady = true;
     state.analysisTargets = getPriorityRemovalTargets(engine.getSnapshot().cells);
-    clearTimer(aiTurnTimer);
-    clearTimer(dropTimer);
-    clearTimer(analysisTimer);
-    analysisEndsAt = Date.now() + ANALYSIS_MS;
-    analysisTimer = window.setTimeout(() => {
-      if (!state.playing || state.paused || state.gameOver || state.cleared) return;
-      endAnalysisPause();
-    }, ANALYSIS_MS);
-    showToast("優先撤去分析: 点滅中の露出ブロックを優先して撤去してください。AIを2秒停止します。", "info", ANALYSIS_MS);
-    speak("asuton", "上に露出した危険ブロックを確認。2秒停止します。", 1900);
-    showOperationEffect("analysis", "優先撤去スキャン", 1750);
+    state.analysisActive = true;
+    showToast("優先撤去分析: 発光した3個が緊急復旧工事の対象です。", "info", 2200);
+    speak("asuton", "優先撤去箇所を特定しました。", 1500);
     render();
+    clearTimer(analysisTimer);
+    analysisEndsAt = Date.now() + SKILL_CUTIN_MS;
+    analysisTimer = window.setTimeout(() => {
+      analysisTimer = null;
+      analysisEndsAt = 0;
+      state.analysisActive = false;
+      render();
+      resumeAIFlow(120);
+    }, SKILL_CUTIN_MS);
     return;
   }
   if (skill === "special") {
@@ -1307,11 +1408,12 @@ const applyBoardSkill = (x: number, y: number) => {
   state.repairMaterials = skill === "remove"
     ? Math.min(maxRepairMaterials(), state.repairMaterials + 1)
     : state.repairMaterials - 1;
+  if (skill === "remove") state.removedBlocks += 1;
+  else state.rebuiltBlocks += 1;
   const rebuildMaterialsDepleted = skill === "rebuild" && state.repairMaterials <= 0;
   const removeMaterialsFull = skill === "remove" && state.repairMaterials >= maxRepairMaterials();
   if (rebuildMaterialsDepleted || removeMaterialsFull) state.selectedSkill = null;
   state.recoveryWindow = 4;
-  state.managementChain = Math.max(1, state.managementChain);
   addGauge(skill === "remove" ? 12 : 16);
   showToast(
     skill === "remove"
@@ -1339,13 +1441,10 @@ const applyBoardSkill = (x: number, y: number) => {
   render();
 };
 
-const runSpecial = () => {
+const runSpecial = async () => {
   const snapshot = engine.getSnapshot();
   const cells = snapshot.cells;
-  // Preserve the holes that existed when the special was activated. Removing
-  // their covering surface first can make them stop qualifying as holes.
-  const emergencyPatchTargets = analyzeBoard(cells).holePositions.slice(0, 2);
-  const useAnalysisTargets = state.analysisActive && state.analysisSpecialReady && state.analysisTargets.length > 0;
+  const useAnalysisTargets = state.analysisSpecialReady && state.analysisTargets.length > 0;
   const removals = useAnalysisTargets
     ? [...state.analysisTargets]
     : Array.from({ length: 10 }, (_, x) => {
@@ -1353,7 +1452,9 @@ const runSpecial = () => {
       return y >= 0 ? { x, y } : null;
     }).filter((position): position is BoardPosition => position !== null)
       .sort((a, b) => a.x - b.x)
-      .slice(0, 4);
+      .slice(0, normalSpecialRemovalLimit());
+  state.specialGauge = 0;
+  state.selectedSkill = null;
   if (useAnalysisTargets) {
     clearTimer(analysisTimer);
     analysisTimer = null;
@@ -1362,22 +1463,31 @@ const runSpecial = () => {
     state.analysisSpecialReady = false;
     state.analysisTargets = [];
   }
+  await playCharacterCutin(useAnalysisTargets
+    ? [
+        { src: cutinUrls.mistonCombo, character: "miston", label: "緊急復旧" },
+        { src: cutinUrls.mintonCombo, character: "minton", label: "再施工準備" },
+        { src: cutinUrls.asutonCombo, character: "asuton", label: "分析連携" },
+      ]
+    : [{ src: cutinUrls.mistonSkill, character: "miston", label: "緊急復旧工事" }],
+  useAnalysisTargets ? COMBO_CUTIN_MS : SKILL_CUTIN_MS);
+  if (!state.playing || state.gameOver || state.cleared) return;
   const removed = removals
     .filter((position) => engine.removeSurfaceBlock(position));
-  const patched = emergencyPatchTargets
-    .filter((position) => engine.placeEmergencyPatch(position));
-  state.specialGauge = 0;
+  const patched = useAnalysisTargets
+    ? placeEmergencyRepairs(analysisRebuildLimit())
+    : [];
+  state.removedBlocks += removed.length;
+  state.rebuiltBlocks += patched.length;
   state.recoveryWindow = 5;
-  state.managementChain = Math.max(2, state.managementChain + 1);
   showSpecialImpact(removed, patched);
-  showClearBurst(`${useAnalysisTargets ? "分析撤去" : "撤去"} ${removed.length} / 補修 ${patched.length}`);
+  showClearBurst(`${useAnalysisTargets ? "分析連携" : "緊急撤去"} ${removed.length}${useAnalysisTargets ? ` / 再施工 ${patched.length}` : ""}`);
   showToast(useAnalysisTargets
-    ? `分析連動・緊急復旧工事: アストンが示した${removed.length}個を撤去、穴を${patched.length}か所仮設補修。`
-    : `緊急復旧工事: 露出ブロックを${removed.length}個撤去、穴を${patched.length}か所仮設補修。`, "good", 2600);
+    ? `分析連動・緊急復旧工事: 指定${removed.length}個を撤去し、再施工を${patched.length}個追加。`
+    : `緊急復旧工事: 露出ブロックを${removed.length}個撤去。`, "good", 2600);
   speak(useAnalysisTargets ? "asuton" : "miston", useAnalysisTargets ? "分析箇所を復旧します。" : "現場、まとめて整えたる。", 2200);
   feedback("special");
   flashBoard("special");
-  showOperationEffect("special", "緊急復旧工事", 1900);
   const resolvedSnapshot = applyLineClearResult(engine.resolveCompletedLines());
   if (state.lines >= currentStage().targetLines) {
     finishGame("clear");
@@ -1388,9 +1498,7 @@ const runSpecial = () => {
     return;
   }
   render();
-  if (useAnalysisTargets && state.playing && !state.paused && !state.gameOver && !state.cleared) {
-    resumeAIFlow(120);
-  }
+  if (state.playing && !state.paused && !state.gameOver && !state.cleared) resumeAIFlow(120);
 };
 
 const pauseGame = () => {
@@ -1406,6 +1514,34 @@ const resumeGame = () => {
   state.paused = false;
   render();
   resumeAIFlow(260);
+};
+
+const openUpgrade = (id: CharacterId) => {
+  state.upgradeCharacter = id;
+  state.upgradePausedGame = state.playing && !state.paused;
+  if (state.upgradePausedGame) pauseGame();
+  render();
+};
+
+const closeUpgrade = () => {
+  const shouldResume = state.upgradePausedGame;
+  state.upgradeCharacter = null;
+  state.upgradePausedGame = false;
+  render();
+  if (shouldResume) resumeGame();
+};
+
+const confirmUpgrade = () => {
+  const id = state.upgradeCharacter;
+  if (!id || !canUpgradeCharacter(id)) return;
+  skillProgression.skillBlocks = Math.round((skillProgression.skillBlocks - 10) * 2) / 2;
+  skillProgression.levels[id] += 1;
+  skillProgression.cycleChosen.push(id);
+  if ((["miston", "minton", "asuton"] as CharacterId[]).every((character) => skillProgression.cycleChosen.includes(character))) skillProgression.cycleChosen = [];
+  saveSkillProgression();
+  showToast(`${characterNames[id]}がLv.${skillProgression.levels[id]}になりました！`, "good", 2400);
+  speak(id, "スキルアップ完了！", 1800);
+  render();
 };
 
 const exitGame = () => {
@@ -1446,10 +1582,11 @@ const bindEvents = () => {
     if (action === "pause-game") pauseGame();
     if (action === "resume-game") resumeGame();
     if (action === "exit-game") exitGame();
+    if (action === "close-upgrade") closeUpgrade();
+    if (action === "confirm-upgrade") confirmUpgrade();
 
     const skill = target.closest<HTMLElement>("[data-skill]")?.dataset.skill as Skill | undefined;
     if (skill) useSkill(skill);
-
     const cell = target.closest<HTMLElement>("[data-board-cell]");
     if (cell) applyBoardSkill(Number(cell.dataset.x), Number(cell.dataset.y));
 
@@ -1458,6 +1595,36 @@ const bindEvents = () => {
       settings[settingInput.dataset.setting as keyof GameSettings] = settingInput.checked;
       saveSettings();
     }
+  });
+
+  let longPressTimer: number | null = null;
+  let longPressCard: HTMLElement | null = null;
+  const cancelLongPress = () => {
+    if (longPressTimer !== null) window.clearTimeout(longPressTimer);
+    longPressTimer = null;
+    if (longPressCard) delete longPressCard.dataset.longPressActive;
+    longPressCard = null;
+  };
+  app.addEventListener("pointerdown", (event) => {
+    const target = event.target as HTMLElement;
+    if (target.closest("[data-skill]")) return;
+    const card = target.closest<HTMLElement>("[data-upgrade-character]");
+    if (!card || !state.playing || state.cleared || state.gameOver) return;
+    cancelLongPress();
+    longPressCard = card;
+    card.dataset.longPressActive = "true";
+    const id = card.dataset.upgradeCharacter as CharacterId;
+    longPressTimer = window.setTimeout(() => {
+      longPressTimer = null;
+      delete card.dataset.longPressActive;
+      longPressCard = null;
+      feedback("small");
+      openUpgrade(id);
+    }, 650);
+  });
+  ["pointerup", "pointercancel", "pointerleave"].forEach((type) => app.addEventListener(type, cancelLongPress));
+  app.addEventListener("contextmenu", (event) => {
+    if ((event.target as HTMLElement).closest("[data-upgrade-character]")) event.preventDefault();
   });
 };
 
