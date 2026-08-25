@@ -16,6 +16,12 @@ ROOT = Path(__file__).parent
 PUBLIC = ROOT.parent / "public" / "tutorial"
 WORK = ROOT / "mobile-premium"
 SOURCE = ROOT / "08-mobile-game.png"
+SKILL_BLOCK = ROOT.parent / "public" / "skill-up-block-simple.png"
+CHARACTERS = {
+    "ミストン": ROOT.parent / "miston.png",
+    "ミントン": ROOT.parent / "minton.png",
+    "アストン": ROOT.parent / "asuton.png",
+}
 PUBLIC.mkdir(parents=True, exist_ok=True)
 WORK.mkdir(exist_ok=True)
 
@@ -36,8 +42,10 @@ SCENES = [
     (9.0, "撤去と再施工の関係", "撤去した数 = 再施工できる数", "ここで、撤去と再施工の数を確認します。撤去は最大三個。撤去した数だけ補修材が増え、その数だけ再施工できます。三個撤去したら、再施工で補修材を使うまで、次の撤去はできません。", "cycle"),
     (7.4, "ミントン：資材搬入", "補修材が少ない時に「資材搬入」", "補修材が足りない時は、中央の資材搬入を押します。補修材が二個増え、再施工の準備ができます。", "delivery"),
     (7.2, "現場を監視", "穴・段差・一番上のブロックを見る", "盤面で見るのは、下が空いた穴、高い段差、そして一番上に露出したブロックです。", "inspect"),
-    (8.2, "アストン：撤去分析", "迷ったら分析。光る3個が優先候補", "どこを撤去するか迷ったら、右下の撤去分析。優先候補が三個、盤面上で強く光り、エーアイも二秒止まります。", "analysis"),
-    (12.0, "緊急復旧工事", "撤去 + 穴へ仮設ブロックを最大2個追加", "ゲージが百パーセントなら、緊急復旧工事を発動できます。分析の直後は、光った三個を狙い撃ち。単独なら、露出した四個を広く撤去します。さらにどちらも、穴に仮設ブロックを最大二個追加します。", "finisher"),
+    (8.2, "アストン：撤去分析", "迷ったら分析。光る3個が優先候補", "どこを撤去するか迷ったら、右下の撤去分析。優先候補が三個、盤面上で強く光り、エーアイも一秒止まります。", "analysis"),
+    (11.0, "緊急復旧工事", "単独5個 / 分析連動3個 + 再施工3個", "ゲージが百パーセントなら、緊急復旧工事を発動できます。単独なら、露出した五個を広く撤去。分析の直後なら、光った三個を狙い撃ちし、さらに三個を確実に再施工します。", "finisher"),
+    (14.0, "管理バランスとSKU", "現場クリア報酬でチームを強化", "現場クリア時、撤去と再施工の差が小さいほど、スキルアップブロックを獲得します。失敗時は獲得できません。SKUは、エスケーユーと読みます。スキルアップの略で、仲間の強化段階を表します。画面右上の画像と、かける数字が現在の所持数です。十個集めたら、キャラクターを長押しします。", "sku"),
+    (14.0, "SKUで3人を強化", "同じ仲間は連続で強化できない", "ミストンは撤去と補修材の上限。ミントンは資材搬入量。アストンは分析後の緊急復旧工事が強化されます。同じ仲間は連続で強化できません。三人全員をエスケーユー1にすると、通常の緊急復旧工事も、撤去五個から六個に強化されます。", "sku-detail"),
     (6.0, "現場へ戻ろう", "監視 → 撤去 → 搬入 → 再施工", "盤面を監視し、必要な仕事だけを選ぶ。それがテトリスの管理人です。現場を復旧しましょう。", "end"),
 ]
 
@@ -177,6 +185,51 @@ def render(scene, index, t, progress):
         d.rounded_rectangle((95,700,625,815),18,fill=(68,13,31,235),outline=(255,105,135,255),width=3)
         d.text((360,742),"補修材が3個なら撤去はストップ",font=fnt(25),anchor="mm",fill="white")
         d.text((360,785),"再施工すると、また撤去できる",font=fnt(22),anchor="mm",fill="#9affc5")
+    elif mode == "sku":
+        veil = Image.new("RGBA", im.size, (0,6,18,145)); im.alpha_composite(veil)
+        d = ImageDraw.Draw(im, "RGBA")
+        d.rounded_rectangle((48,310,672,930),26,fill=(2,17,34,244),outline=(255,118,132,245),width=4)
+        icon = Image.open(SKILL_BLOCK).convert("RGBA").resize((150,150), Image.Resampling.LANCZOS)
+        im.alpha_composite(icon, (285,350))
+        d.text((360,535),"スキルアップブロック",font=fnt(29),anchor="mm",fill="white")
+        d.rounded_rectangle((245,558,475,608),14,fill=(59,13,28,235),outline=(255,118,132,255),width=3)
+        mini = icon.resize((34,34), Image.Resampling.LANCZOS)
+        im.alpha_composite(mini, (286,566))
+        d.text((380,583),"×5",font=fnt(25),anchor="mm",fill="#ffd0d5")
+        rewards=((120,"差 0","+2"),(280,"差 1","+1"),(440,"差 2","+0.5"),(600,"差 3+","0"))
+        for x,label,reward in rewards:
+            d.rounded_rectangle((x-67,630,x+67,735),16,fill=(18,31,50,255),outline=(255,118,132,220),width=3)
+            d.text((x,660),label,font=fnt(19),anchor="mm",fill="#cde9f5")
+            d.text((x,707),reward,font=fnt(28),anchor="mm",fill="#ffd0d5")
+        d.rounded_rectangle((95,750,625,855),18,fill=(59,13,28,235),outline=(255,118,132,255),width=3)
+        d.text((360,787),"10個でキャラを長押し",font=fnt(26),anchor="mm",fill="white")
+        d.text((360,828),"SKU1 → SKU2 の順に強化",font=fnt(22),anchor="mm",fill="#a7ffd3")
+    elif mode == "sku-detail":
+        veil = Image.new("RGBA", im.size, (0,6,18,150)); im.alpha_composite(veil)
+        d = ImageDraw.Draw(im, "RGBA")
+        d.rounded_rectangle((42,285,678,950),26,fill=(2,17,34,246),outline=(255,118,132,245),width=4)
+        cards = (
+            (138, "ミストン", "撤去上限", "3 → 4 → 5", (176,110,255)),
+            (360, "ミントン", "搬入量", "+2 → +3 → +4", (99,230,255)),
+            (582, "アストン", "分析後復旧", "3/3 → 4/3 → 5/4", (255,216,74)),
+        )
+        for x,name,label,value,color in cards:
+            d.rounded_rectangle((x-94,350,x+94,690),20,fill=(11,28,48,255),outline=(*color,235),width=4)
+            character = Image.open(CHARACTERS[name]).convert("RGBA")
+            character.thumbnail((92, 112), Image.Resampling.LANCZOS)
+            glow = Image.new("RGBA", im.size)
+            gd = ImageDraw.Draw(glow, "RGBA")
+            gd.ellipse((x-58,370,x+58,486),fill=(*color,38),outline=(*color,210),width=4)
+            glow = glow.filter(ImageFilter.GaussianBlur(8))
+            im.alpha_composite(glow)
+            im.alpha_composite(character, (x-character.width//2, 376+(108-character.height)//2))
+            d.text((x,500),name,font=fnt(20),anchor="mm",fill="white")
+            d.text((x,548),label,font=fnt(18),anchor="mm",fill="#cde9f5")
+            d.text((x,612),value,font=fnt(17 if name == "アストン" else 21),anchor="mm",fill=color)
+            d.text((x,660),"SKU 0 → 1 → 2",font=fnt(15),anchor="mm",fill="#ffffff")
+        d.rounded_rectangle((78,735,642,845),18,fill=(59,13,28,235),outline=(255,118,132,255),width=3)
+        d.text((360,772),"同じ仲間の連続強化はできない",font=fnt(22),anchor="mm",fill="white")
+        d.text((360,818),"3人がSKU1 → 通常復旧 5個から6個へ",font=fnt(20),anchor="mm",fill="#a7ffd3")
     elif mode in ("remove","delivery","rebuild","analysis","finisher"):
         button = BUTTONS[mode]
         target = None
@@ -204,9 +257,9 @@ def render(scene, index, t, progress):
             d.text((190,820),"分析後",font=fnt(26),anchor="mm",fill="#ffe35e")
             d.text((190,875),"光った3個",font=fnt(31),anchor="mm",fill="white")
             d.text((530,820),"単独",font=fnt(26),anchor="mm",fill="#67ecff")
-            d.text((530,875),"露出4個",font=fnt(31),anchor="mm",fill="white")
-            d.text((360,950),"共通：穴へ仮設ブロック +2",font=fnt(23),anchor="mm",fill="#9affc5")
-            d.text((360,995),"撤去と補修を同時に実行",font=fnt(20),anchor="mm",fill="white")
+            d.text((530,875),"露出5個",font=fnt(31),anchor="mm",fill="white")
+            d.text((360,950),"分析後のみ：再施工 +3",font=fnt(23),anchor="mm",fill="#9affc5")
+            d.text((360,995),"単独は撤去のみ / 分析後は撤去 + 再施工",font=fnt(18),anchor="mm",fill="white")
         bx,by=button
         glow_rect(im,(bx-58,by-38,bx+58,by+38),(255,224,70),pulse=pulse)
         # Draw the guide first, then the tap marker so the line never crosses it.

@@ -3,13 +3,15 @@ import { analyzeBoard, type BoardDiagnostics } from "./Game/BoardDiagnostics";
 import type { BoardCell, BoardPosition } from "./Game/Board";
 import { TetrisEngine, type TetrisSnapshot } from "./Game/TetrisEngine";
 import { TETROMINO_ORDER, type TetrominoType } from "./Game/Tetromino";
+import { audioDirector, type GameSfx } from "./Audio/AudioDirector";
 import asutonUrl from "../asuton.png";
 import mintonUrl from "../minton.png";
 import mistonUrl from "../miston.png";
 
 const rulebookGameplayUrl = `${import.meta.env.BASE_URL}rulebook/gameplay-live.png`;
 const rulebookAnalysisUrl = `${import.meta.env.BASE_URL}rulebook/priority-analysis.png`;
-const tutorialVideoUrl = `${import.meta.env.BASE_URL}tutorial/tetris-manager-mobile-tutorial.mp4?v=20260823-voice`;
+const skillUpBlockUrl = `${import.meta.env.BASE_URL}skill-up-block-simple.png`;
+const tutorialVideoUrl = `${import.meta.env.BASE_URL}tutorial/tetris-manager-mobile-tutorial.mp4?v=20260825-sku2`;
 const cutinUrls = {
   asutonSkill: `${import.meta.env.BASE_URL}cutins/asuton-skill.png`,
   mintonSkill: `${import.meta.env.BASE_URL}cutins/minton-skill.png`,
@@ -68,15 +70,22 @@ type CharacterId = "miston" | "minton" | "asuton";
 type GameSettings = {
   vibration: boolean;
   sound: boolean;
+  bgm: boolean;
+  bgmVolume: number;
+  sfxVolume: number;
   highContrast: boolean;
   largeText: boolean;
 };
 
 const SETTINGS_STORAGE_KEY = "tetris-manager-settings-v1";
-const SKILL_PROGRESSION_STORAGE_KEY = "tetris-manager-skill-progression-v1";
+// v2 starts the formal SKU progression at zero while preserving it between stages.
+const SKILL_PROGRESSION_STORAGE_KEY = "tetris-manager-skill-progression-v2";
 const defaultSettings: GameSettings = {
   vibration: true,
   sound: true,
+  bgm: true,
+  bgmVolume: 42,
+  sfxVolume: 70,
   highContrast: false,
   largeText: false,
 };
@@ -84,13 +93,25 @@ const defaultSettings: GameSettings = {
 const readSettings = (): GameSettings => {
   try {
     const saved = JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY) ?? "{}") as Partial<GameSettings>;
-    return { ...defaultSettings, ...saved };
+    return {
+      ...defaultSettings,
+      ...saved,
+      bgmVolume: Math.min(100, Math.max(0, Number(saved.bgmVolume ?? defaultSettings.bgmVolume))),
+      sfxVolume: Math.min(100, Math.max(0, Number(saved.sfxVolume ?? defaultSettings.sfxVolume))),
+    };
   } catch {
     return { ...defaultSettings };
   }
 };
 
 const settings = readSettings();
+const syncAudioSettings = () => audioDirector.configure({
+  musicEnabled: settings.bgm,
+  effectsEnabled: settings.sound,
+  musicVolume: settings.bgmVolume / 100,
+  effectsVolume: settings.sfxVolume / 100,
+});
+syncAudioSettings();
 
 type SkillProgression = { skillBlocks: number; levels: Record<CharacterId, number>; cycleChosen: CharacterId[] };
 const defaultSkillProgression: SkillProgression = { skillBlocks: 0, levels: { miston: 0, minton: 0, asuton: 0 }, cycleChosen: [] };
@@ -324,6 +345,13 @@ const initialMarkup = `
           <h3 id="settings-feedback-title">フィードバック</h3>
           <label class="m2-setting-row"><span><b>バイブレーション</b><small>対応端末で、ライン消去・スキル成功・必殺技時に振動します</small></span><input type="checkbox" data-setting="vibration" role="switch" /></label>
           <label class="m2-setting-row"><span><b>効果音</b><small>操作と現場復旧の短い効果音</small></span><input type="checkbox" data-setting="sound" role="switch" /></label>
+          <label class="m2-setting-range"><span><b>効果音の音量</b><small>操作音・固有スキル・緊急復旧工事</small></span><output data-setting-value="sfxVolume">70</output><input type="range" min="0" max="100" step="1" data-setting-range="sfxVolume" /></label>
+          <button class="m2-sound-test" type="button" data-action="test-sound">効果音を試聴</button>
+        </section>
+        <section class="m2-settings-card" aria-labelledby="settings-music-title">
+          <h3 id="settings-music-title">BGM</h3>
+          <label class="m2-setting-row"><span><b>BGM</b><small>現場危険度に合わせてテンポが上がるオリジナル曲</small></span><input type="checkbox" data-setting="bgm" role="switch" /></label>
+          <label class="m2-setting-range"><span><b>BGMの音量</b><small>プレイ中の楽曲のみ調整します</small></span><output data-setting-value="bgmVolume">42</output><input type="range" min="0" max="100" step="1" data-setting-range="bgmVolume" /></label>
         </section>
         <section class="m2-settings-card" aria-labelledby="settings-display-title">
           <h3 id="settings-display-title">表示</h3>
@@ -532,6 +560,58 @@ const initialMarkup = `
           <p class="m2-rulebook-note"><b>使い分け:</b> 通常は広く5個撤去。分析後は狙った3個を撤去し、必ず3個再施工します。</p>
         </section>
 
+        <section class="m2-rulebook-section m2-rulebook-upgrade" aria-labelledby="rulebook-upgrade-title">
+          <div class="m2-rulebook-section-heading">
+            <span class="m2-kicker">MANAGEMENT BALANCE</span>
+            <h3 id="rulebook-upgrade-title">管理バランスでスキルを育てる</h3>
+            <p>現場クリア時の「撤去数」と「搬入数（再施工数）」が近いほど、スキルアップブロックを多く獲得できます。失敗時は獲得できません。</p>
+          </div>
+          <div class="m2-rulebook-sku-hero">
+            <img src="${skillUpBlockUrl}" alt="スキルアップブロック" />
+            <div><b>スキルアップブロック</b><small>管理バランスを整えて集め、10個で仲間を1回強化します。SKU（エスケーユー）は「Skill Upgrade」の略で、仲間の強化段階を表します。</small></div>
+          </div>
+          <div class="m2-rulebook-balance-flow" aria-label="管理バランスからスキルアップまでの流れ">
+            <div><span>1</span><b>撤去する</b><small>邪魔なブロックを外す</small></div>
+            <i>→</i>
+            <div><span>2</span><b>再施工する</b><small>回収した数を盤面へ戻す</small></div>
+            <i>→</i>
+            <div><span>3</span><b>差を小さく</b><small>終了時に報酬を獲得</small></div>
+          </div>
+          <div class="m2-rulebook-balance-rewards">
+            <article class="is-best"><span>差 0</span><strong>+2個</strong><small>完全一致</small></article>
+            <article><span>差 1</span><strong>+1個</strong><small>あと1個</small></article>
+            <article><span>差 2</span><strong>+0.5個</strong><small>あと2個</small></article>
+            <article class="is-none"><span>差 3以上</span><strong>0個</strong><small>報酬なし</small></article>
+          </div>
+          <div class="m2-rulebook-upgrade-howto">
+            <div class="m2-rulebook-longpress" aria-hidden="true">
+              <img src="${mistonUrl}" alt="" /><span class="m2-longpress-ring"></span><b>長押し</b>
+            </div>
+            <div>
+              <h4>10個たまったら、キャラを長押し</h4>
+              <p>プレイ中にミストン・ミントン・アストンのカードを<strong>長押し</strong>すると、次の強化内容を確認できます。短いタップでは開きません。</p>
+            </div>
+          </div>
+          <div class="m2-rulebook-upgrade-grid">
+            <article class="is-miston">
+              <img src="${mistonUrl}" alt="ミストン" />
+              <div><h4>ミストン</h4><p><b>SKU1</b> 撤去・補修材上限 3→4</p><p><b>SKU2</b> 撤去・補修材上限 4→5</p></div>
+            </article>
+            <article class="is-minton">
+              <img src="${mintonUrl}" alt="ミントン" />
+              <div><h4>ミントン</h4><p><b>SKU1</b> 資材搬入 +2→+3</p><p><b>SKU2</b> 資材搬入 +3→+4</p></div>
+            </article>
+            <article class="is-asuton">
+              <img src="${asutonUrl}" alt="アストン" />
+              <div><h4>アストン</h4><p><b>SKU1</b> 分析後の必殺技：撤去4 / 再施工3</p><p><b>SKU2</b> 分析後の必殺技：撤去5 / 再施工4</p></div>
+            </article>
+          </div>
+          <div class="m2-rulebook-upgrade-rules">
+            <p><b>強化の順番:</b> 同じキャラを連続では強化できません。3人を1回ずつ強化したら、次の周期でまた好きな1人から選べます。</p>
+            <p><b>3人がSKU1になると:</b> 分析なしの「緊急復旧工事」で撤去できるブロックが <strong>5個→6個</strong> に増えます。</p>
+          </div>
+        </section>
+
         <section class="m2-rulebook-section" aria-labelledby="rulebook-clear-title">
           <div class="m2-rulebook-section-heading">
             <span class="m2-kicker">CLEAR CONDITION</span>
@@ -570,7 +650,11 @@ const initialMarkup = `
         <aside class="m2-side-readout" aria-label="現場情報">
           <div><span>消去ライン</span><b data-lines>0 / 10</b></div>
           <div><span>現場危険度</span><b data-danger-value>0</b><i data-danger-label>安全</i></div>
-          <div class="m2-balance-readout"><span>管理バランス</span><b data-balance>撤去 0 / 搬入 0</b><i data-skill-blocks>スキルUP 0個</i></div>
+          <div class="m2-balance-readout">
+            <span>管理バランス</span>
+            <b data-balance>撤去 0 / 搬入 0</b>
+            <i class="m2-balance-sku"><span data-balance-difference>差 0</span><img src="${skillUpBlockUrl}" alt="スキルアップブロック" /><strong data-skill-blocks>×0</strong></i>
+          </div>
         </aside>
 
         <section class="m2-board-frame" data-board-frame aria-label="AIプレイ盤面">
@@ -636,7 +720,14 @@ const initialMarkup = `
 `;
 
 const setScreen = (screen: Screen) => {
-  if (screen !== "rulebook") app.querySelector<HTMLVideoElement>("[data-rulebook-video]")?.pause();
+  if (screen !== "rulebook") {
+    const video = app.querySelector<HTMLVideoElement>("[data-rulebook-video]");
+    if (video) {
+      video.pause();
+      video.currentTime = 0;
+      video.load();
+    }
+  }
   state.screen = screen;
   screens().forEach((element) => {
     element.hidden = element.dataset.screen !== screen;
@@ -650,7 +741,15 @@ const setRulebookMode = (mode: "video" | "text") => {
   app.querySelectorAll<HTMLButtonElement>("[data-rulebook-mode]").forEach((button) => {
     button.dataset.active = button.dataset.rulebookMode === mode ? "true" : "false";
   });
-  if (mode === "text") app.querySelector<HTMLVideoElement>("[data-rulebook-video]")?.pause();
+  const video = app.querySelector<HTMLVideoElement>("[data-rulebook-video]");
+  if (mode === "text" && video) {
+    video.pause();
+    video.currentTime = 0;
+    video.load();
+  } else if (mode === "video" && video && (video.ended || video.readyState === 0)) {
+    video.currentTime = 0;
+    video.load();
+  }
 };
 
 const applySettings = () => {
@@ -658,8 +757,15 @@ const applySettings = () => {
   root?.toggleAttribute("data-high-contrast", settings.highContrast);
   root?.toggleAttribute("data-large-text", settings.largeText);
   app.querySelectorAll<HTMLInputElement>("[data-setting]").forEach((input) => {
-    input.checked = settings[input.dataset.setting as keyof GameSettings];
+    input.checked = Boolean(settings[input.dataset.setting as keyof GameSettings]);
   });
+  app.querySelectorAll<HTMLInputElement>("[data-setting-range]").forEach((input) => {
+    const key = input.dataset.settingRange as "bgmVolume" | "sfxVolume";
+    input.value = String(settings[key]);
+    const output = app.querySelector<HTMLOutputElement>(`[data-setting-value="${key}"]`);
+    if (output) output.value = String(settings[key]);
+  });
+  syncAudioSettings();
 };
 
 const saveSettings = () => {
@@ -729,23 +835,8 @@ const feedback = (kind: FeedbackKind) => {
   };
   requestVibration(patterns[kind]);
 
-  if (!settings.sound) return;
-
-  const AudioContextConstructor = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AudioContextConstructor) return;
-  const context = new AudioContextConstructor();
-  const oscillator = context.createOscillator();
-  const gain = context.createGain();
-  const now = context.currentTime;
-  const config = kind === "special" ? [240, 880, 0.07] : kind === "big" ? [430, 980, 0.06] : [560, 760, 0.04];
-  oscillator.frequency.setValueAtTime(config[0], now);
-  oscillator.frequency.exponentialRampToValueAtTime(config[1], now + config[2]);
-  gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(0.035, now + 0.01);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + config[2]);
-  oscillator.connect(gain).connect(context.destination);
-  oscillator.start(now);
-  oscillator.stop(now + config[2] + 0.02);
+  const sounds: Record<FeedbackKind, GameSfx> = { small: "tap", medium: "success", big: "line", special: "special" };
+  audioDirector.play(sounds[kind]);
 };
 
 const showToast = (message: string, tone: OperatorState["toastTone"] = "info", duration = TOAST_MS) => {
@@ -817,6 +908,7 @@ const renderAnalysisLayer = (diagnostics: BoardDiagnostics) => {
 const render = () => {
   const snapshot = engine.getSnapshot();
   const diagnostics = analyzeBoard(snapshot.cells);
+  audioDirector.setDanger(diagnostics.danger);
   const active = new Map(snapshot.activeCells.map((cell) => [`${cell.x},${cell.y}`, cell.type]));
   const cells = Array.from(app.querySelectorAll<HTMLElement>("[data-board-cell]"));
   cells.forEach((cell) => {
@@ -850,7 +942,8 @@ const render = () => {
   setText("[data-danger-value]", String(diagnostics.danger));
   setText("[data-danger-label]", ({ safe: "安全", caution: "注意", danger: "危険", emergency: "緊急", collapse: "崩壊寸前" } as const)[diagnostics.level]);
   setText("[data-balance]", `撤去 ${state.removedBlocks} / 搬入 ${state.rebuiltBlocks}`);
-  setText("[data-skill-blocks]", `差 ${balanceDifference()}・スキルUP ${skillProgression.skillBlocks}個`);
+  setText("[data-balance-difference]", `差 ${balanceDifference()}`);
+  setText("[data-skill-blocks]", `×${skillProgression.skillBlocks}`);
   setText("[data-header-summary]", state.cleared ? "現場復旧完了" : state.gameOver ? "現場が崩壊しました" : state.paused ? "作業を一時停止中" : "AIがプレイ継続中");
   setText("[data-action-guide]", state.selectedSkill === "remove" ? `連続撤去モード: 表面ブロックを続けてタップできます。補修材が${maxRepairMaterials()}個で上限です。` : state.selectedSkill === "rebuild" ? "連続再施工モード: 支えのある空きマスを続けてタップできます。補修材を使うと、再び撤去できます。" : "AIは止まりません。現場を見て、必要な時だけ管理スキルを使ってください。");
 
@@ -911,7 +1004,10 @@ const renderResult = () => {
   modal.dataset.outcome = state.cleared ? "clear" : "failure";
   const trainingFailure = state.currentStageId === 1;
   const remainingLines = Math.max(0, currentStage().targetLines - state.lines);
-  const balance = `<div class="m2-result-balance"><b>管理バランス 差${balanceDifference()}</b><small>撤去${state.removedBlocks} / 搬入${state.rebuiltBlocks}</small><strong>スキルUP +${state.balanceReward}</strong><small>所持 ${skillProgression.skillBlocks}/10</small><em>搬入＝再施工で戻したブロック</em></div>`;
+  const balanceSummary = `<b>管理バランス 差${balanceDifference()}</b><small>撤去${state.removedBlocks} / 搬入${state.rebuiltBlocks}</small>`;
+  const balance = state.cleared
+    ? `<div class="m2-result-balance">${balanceSummary}<div class="m2-result-sku-reward"><img src="${skillUpBlockUrl}" alt="スキルアップブロック" /><strong>+${state.balanceReward}</strong></div><small>スキルアップブロック 所持 ${skillProgression.skillBlocks}/10</small><em>搬入＝再施工で戻したブロック</em></div>`
+    : `<div class="m2-result-balance">${balanceSummary}<small>スキルアップブロックは現場クリア時のみ獲得できます。</small><em>搬入＝再施工で戻したブロック</em></div>`;
   modal.innerHTML = state.cleared
     ? `<span>TRAINING COMPLETE</span><strong>${currentStage().name} 完了！</strong><p>${currentStage().targetLines}ラインを消去しました。</p>${balance}<button type="button" data-action="restart-game">もう一度</button>${state.currentStageId < STAGES.length ? `<button type="button" data-action="next-stage">次の現場へ</button>` : ""}<button type="button" data-action="exit-game">現場を出る</button>`
     : `<span>${trainingFailure ? "TRAINING FAILED" : "SITE COLLAPSE"}</span><div class="m2-failure-mark" aria-hidden="true">×</div><strong>${trainingFailure ? "復旧研修 失敗" : "現場崩壊"}</strong><p>${trainingFailure ? "現場を守り切れませんでした。撤去と再施工の順番を変えて、もう一度立て直しましょう。" : "危険度が限界に達しました。穴と段差を早めに整えて、AIが立て直せる状態へ戻しましょう。"}</p>${balance}<small class="m2-failure-progress">消去ライン ${state.lines} / ${currentStage().targetLines}　残り ${remainingLines}</small><button type="button" data-action="restart-game">再挑戦</button><button type="button" data-action="exit-game">現場を出る</button>`;
@@ -931,8 +1027,8 @@ const renderUpgradeModal = () => {
   modal.hidden = id === null;
   if (!id) return;
   const level = skillProgression.levels[id];
-  const status = level >= 2 ? "最大レベルです" : skillProgression.cycleChosen.includes(id) ? "今周期は別の仲間を選んでください" : skillProgression.skillBlocks < 10 ? `あと${10 - skillProgression.skillBlocks}個必要です` : "スキルアップ可能";
-  modal.innerHTML = `<button class="m2-upgrade-close" type="button" data-action="close-upgrade" aria-label="閉じる">×</button><span>SKILL UP</span><strong>${characterNames[id]} Lv.${level}</strong><p>${level >= 2 ? "2段階のスキルアップが完了しています。" : upgradeDescription(id)}</p><div class="m2-upgrade-stock">スキルアップブロック <b>${skillProgression.skillBlocks}/10</b></div><small>${status}</small><button type="button" data-action="confirm-upgrade" ${canUpgradeCharacter(id) ? "" : "disabled"}>${level >= 2 ? "強化完了" : "スキルを強化する"}</button>`;
+  const status = level >= 2 ? "SKU2（最大）です" : skillProgression.cycleChosen.includes(id) ? "今周期は別の仲間を選んでください" : skillProgression.skillBlocks < 10 ? `あと${10 - skillProgression.skillBlocks}個必要です` : "スキルアップ可能";
+  modal.innerHTML = `<button class="m2-upgrade-close" type="button" data-action="close-upgrade" aria-label="閉じる">×</button><span>SKILL UP</span><strong>${characterNames[id]} SKU${level}</strong><p>${level >= 2 ? "SKU2までの強化が完了しています。" : upgradeDescription(id)}</p><div class="m2-upgrade-stock"><img src="${skillUpBlockUrl}" alt="" /><span>スキルアップブロック <b>${skillProgression.skillBlocks}/10</b></span></div><small>${status}</small><button type="button" data-action="confirm-upgrade" ${canUpgradeCharacter(id) ? "" : "disabled"}>${level >= 2 ? "強化完了" : "スキルを強化する"}</button>`;
 };
 
 const renderPause = () => {
@@ -1012,7 +1108,6 @@ const playCharacterCutin = (frames: CutinFrame[], duration: number) => new Promi
     <div class="m2-cutin-impact" aria-hidden="true"></div>
   `;
   cutin.hidden = false;
-  feedback(frames.length > 1 ? "special" : "big");
   clearTimer(cinematicTimer);
   cinematicTimer = window.setTimeout(() => {
     cutin.hidden = true;
@@ -1044,16 +1139,19 @@ const addGauge = (amount: number) => {
 
 const finishGame = (outcome: "clear" | "collapse") => {
   if (!state.balanceRewardApplied) {
-    state.balanceReward = balanceRewardFor(balanceDifference());
-    skillProgression.skillBlocks = Math.round((skillProgression.skillBlocks + state.balanceReward) * 2) / 2;
+    state.balanceReward = outcome === "clear" ? balanceRewardFor(balanceDifference()) : 0;
+    if (outcome === "clear") {
+      skillProgression.skillBlocks = Math.round((skillProgression.skillBlocks + state.balanceReward) * 2) / 2;
+      saveSkillProgression();
+    }
     state.balanceRewardApplied = true;
-    saveSkillProgression();
   }
   state.playing = false;
   state.paused = false;
   state.cleared = outcome === "clear";
   state.gameOver = outcome === "collapse";
   stopGameTimers();
+  audioDirector.stopMusic();
   if (outcome === "clear") {
     unlockStage(state.currentStageId + 1);
     showToast("現場復旧完了！", "good", 2600);
@@ -1275,6 +1373,7 @@ const startGame = (stageId = state.currentStageId) => {
   showToast(`${currentStage().name}: 崩れた現場から復旧を開始します。`, "info", 2300);
   speak("minton", "崩れた現場、資材で整えましょう。", 1800);
   setScreen("game");
+  void audioDirector.startMusic();
   render();
   startProgressWatchdog();
   scheduleAITurn(850);
@@ -1296,6 +1395,7 @@ const useSkill = async (skill: Skill) => {
       render();
       return;
     }
+    audioDirector.play("delivery");
     await playCharacterCutin([
       { src: cutinUrls.mintonSkill, character: "minton", label: "資材搬入" },
     ], SKILL_CUTIN_MS);
@@ -1314,6 +1414,7 @@ const useSkill = async (skill: Skill) => {
   }
   if (skill === "analysis") {
     state.selectedSkill = null;
+    audioDirector.play("analysis");
     await playCharacterCutin([
       { src: cutinUrls.asutonSkill, character: "asuton", label: "優先撤去分析" },
     ], SKILL_CUTIN_MS);
@@ -1463,6 +1564,7 @@ const runSpecial = async () => {
     state.analysisSpecialReady = false;
     state.analysisTargets = [];
   }
+  audioDirector.play(useAnalysisTargets ? "combo" : "special");
   await playCharacterCutin(useAnalysisTargets
     ? [
         { src: cutinUrls.mistonCombo, character: "miston", label: "緊急復旧" },
@@ -1506,12 +1608,14 @@ const pauseGame = () => {
   state.paused = true;
   clearTimer(aiTurnTimer);
   clearTimer(dropTimer);
+  audioDirector.pauseMusic();
   render();
 };
 
 const resumeGame = () => {
   if (!state.playing || !state.paused) return;
   state.paused = false;
+  void audioDirector.startMusic();
   render();
   resumeAIFlow(260);
 };
@@ -1539,7 +1643,7 @@ const confirmUpgrade = () => {
   skillProgression.cycleChosen.push(id);
   if ((["miston", "minton", "asuton"] as CharacterId[]).every((character) => skillProgression.cycleChosen.includes(character))) skillProgression.cycleChosen = [];
   saveSkillProgression();
-  showToast(`${characterNames[id]}がLv.${skillProgression.levels[id]}になりました！`, "good", 2400);
+  showToast(`${characterNames[id]}がSKU${skillProgression.levels[id]}になりました！`, "good", 2400);
   speak(id, "スキルアップ完了！", 1800);
   render();
 };
@@ -1549,6 +1653,7 @@ const exitGame = () => {
   state.playing = false;
   state.paused = false;
   state.selectedSkill = null;
+  audioDirector.stopMusic();
   setScreen("title");
 };
 
@@ -1567,6 +1672,7 @@ const closeSettings = () => {
 
 const bindEvents = () => {
   app.addEventListener("click", (event) => {
+    void audioDirector.unlock();
     const target = event.target as HTMLElement;
     const action = target.closest<HTMLElement>("[data-action]")?.dataset.action;
     if (action === "open-stage") setScreen("stage");
@@ -1584,6 +1690,9 @@ const bindEvents = () => {
     if (action === "exit-game") exitGame();
     if (action === "close-upgrade") closeUpgrade();
     if (action === "confirm-upgrade") confirmUpgrade();
+    if (action === "test-sound") {
+      void audioDirector.unlock().then(() => audioDirector.play("combo"));
+    }
 
     const skill = target.closest<HTMLElement>("[data-skill]")?.dataset.skill as Skill | undefined;
     if (skill) useSkill(skill);
@@ -1592,9 +1701,18 @@ const bindEvents = () => {
 
     const settingInput = target.closest<HTMLInputElement>("[data-setting]");
     if (settingInput) {
-      settings[settingInput.dataset.setting as keyof GameSettings] = settingInput.checked;
+      const key = settingInput.dataset.setting as "vibration" | "sound" | "bgm" | "highContrast" | "largeText";
+      settings[key] = settingInput.checked;
       saveSettings();
     }
+  });
+
+  app.addEventListener("input", (event) => {
+    const input = (event.target as HTMLElement).closest<HTMLInputElement>("[data-setting-range]");
+    if (!input) return;
+    const key = input.dataset.settingRange as "bgmVolume" | "sfxVolume";
+    settings[key] = Number(input.value);
+    saveSettings();
   });
 
   let longPressTimer: number | null = null;
@@ -1636,6 +1754,11 @@ export const mountManagerII = () => {
   tutorialVideo?.addEventListener("error", () => {
     const fallback = app.querySelector<HTMLElement>("[data-video-fallback]");
     if (fallback) fallback.hidden = false;
+  });
+  tutorialVideo?.addEventListener("ended", () => {
+    tutorialVideo.pause();
+    tutorialVideo.currentTime = 0;
+    tutorialVideo.load();
   });
   setRulebookMode("video");
   setScreen("title");
