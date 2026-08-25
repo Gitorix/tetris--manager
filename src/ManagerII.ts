@@ -1028,7 +1028,7 @@ const renderUpgradeModal = () => {
   if (!id) return;
   const level = skillProgression.levels[id];
   const status = level >= 2 ? "SKU2（最大）です" : skillProgression.cycleChosen.includes(id) ? "今周期は別の仲間を選んでください" : skillProgression.skillBlocks < 10 ? `あと${10 - skillProgression.skillBlocks}個必要です` : "スキルアップ可能";
-  modal.innerHTML = `<button class="m2-upgrade-close" type="button" data-action="close-upgrade" aria-label="閉じる">×</button><span>SKILL UP</span><strong>${characterNames[id]} SKU${level}</strong><p>${level >= 2 ? "SKU2までの強化が完了しています。" : upgradeDescription(id)}</p><div class="m2-upgrade-stock"><img src="${skillUpBlockUrl}" alt="" /><span>スキルアップブロック <b>${skillProgression.skillBlocks}/10</b></span></div><small>${status}</small><button type="button" data-action="confirm-upgrade" ${canUpgradeCharacter(id) ? "" : "disabled"}>${level >= 2 ? "強化完了" : "スキルを強化する"}</button>`;
+  modal.innerHTML = `<button class="m2-upgrade-close" type="button" data-action="close-upgrade" aria-label="閉じる">×</button><span>SKILL UP</span><strong>${characterNames[id]} SKU${level}</strong><p>${level >= 2 ? "SKU2までの強化が完了しています。" : upgradeDescription(id)}</p><div class="m2-upgrade-stock"><img src="${skillUpBlockUrl}" alt="" /><span>スキルアップブロック</span><b>${skillProgression.skillBlocks}/10</b></div><small>${status}</small><button type="button" data-action="confirm-upgrade" ${canUpgradeCharacter(id) ? "" : "disabled"}>${level >= 2 ? "強化完了" : "スキルを強化する"}</button>`;
 };
 
 const renderPause = () => {
