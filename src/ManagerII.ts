@@ -38,21 +38,21 @@ type StageConfig = {
 };
 
 const STAGES: StageConfig[] = [
-  { id: 1, name: "復旧研修 01", targetLines: 10, fallStepMs: 70, turnGapMs: 1080, mistakeSeverity: 0.72, initialRows: ["II..OO..TT", "....O...T.", "......S..."] },
-  { id: 2, name: "復旧現場 02", targetLines: 14, fallStepMs: 57, turnGapMs: 900, mistakeSeverity: 0.81, initialRows: ["LL..OO..JJ", ".L..O...J.", "....TTT...", ".....T...."] },
-  { id: 3, name: "復旧現場 03", targetLines: 16, fallStepMs: 47, turnGapMs: 760, mistakeSeverity: 0.88, initialRows: ["SS..OO..ZZ", ".SS..O..ZZ", "LL..TT..JJ", ".L...T...J", "..L......."] },
-  { id: 4, name: "復旧現場 04", targetLines: 18, fallStepMs: 39, turnGapMs: 640, mistakeSeverity: 0.94, initialRows: ["LL..OO..JJ", ".L..O...J.", "..L...TT..", "...S..T...", "....SS....", ".....Z...."] },
-  { id: 5, name: "復旧現場 05", targetLines: 21, fallStepMs: 33, turnGapMs: 540, mistakeSeverity: 0.97, initialRows: ["ZZ..OO..SS", ".ZZ.OO.SS.", "LL..T...JJ", ".L.TTT...J", "..L..I....", "....I.....", "......Z..."] },
-  { id: 6, name: "復旧現場 06", targetLines: 25, fallStepMs: 28, turnGapMs: 455, mistakeSeverity: 0.99, initialRows: ["JJ..OO..LL", ".J..OO...L", ".J.TTT.L..", "...T.SS...", "....SS....", "....Z.....", ".....ZZ..."] },
-  { id: 7, name: "復旧現場 07", targetLines: 29, fallStepMs: 24, turnGapMs: 390, mistakeSeverity: 1, initialRows: ["ZZ..OO..SS", ".ZZ.OO.SS.", "LL..TT..JJ", ".L.TTT...J", "..L...I...", "....III...", ".....I....", "......Z..."] },
-  { id: 8, name: "復旧現場 08", targetLines: 32, fallStepMs: 22, turnGapMs: 350, mistakeSeverity: 1, initialRows: ["LL..OO..JJ", ".L..OO...J", "SS..TT..ZZ", ".SS.T...ZZ", "..L..I....", "....II....", ".....I....", "...Z......"] },
-  { id: 9, name: "復旧現場 09", targetLines: 35, fallStepMs: 20, turnGapMs: 320, mistakeSeverity: 1, initialRows: ["ZZ..OO..SS", ".ZZ.OO.SS.", "LL..TT..JJ", ".L.TTT...J", "..L...I...", "....III...", ".....I....", "..S..Z....", "...SSZZ..."] },
-  { id: 10, name: "復旧現場 10", targetLines: 38, fallStepMs: 18, turnGapMs: 290, mistakeSeverity: 1, initialRows: ["JJ..OO..LL", ".J..OO...L", ".J.TTT.L..", "...T.SS...", "ZZ..SS..ZZ", ".ZZ..I.ZZ.", "....III...", ".....I....", "..L......."] },
-  { id: 11, name: "復旧現場 11", targetLines: 41, fallStepMs: 17, turnGapMs: 265, mistakeSeverity: 1, initialRows: ["LL..OO..JJ", ".L..OO...J", "SS..TT..ZZ", ".SS.T...ZZ", "..L..I....", "....II....", ".....I....", "...Z..S...", "..ZZ.SS...", "......S..."] },
-  { id: 12, name: "復旧現場 12", targetLines: 44, fallStepMs: 16, turnGapMs: 240, mistakeSeverity: 1, initialRows: ["ZZ..OO..SS", ".ZZ.OO.SS.", "LL..TT..JJ", ".L.TTT...J", "..L...I...", "....III...", ".....I....", "..S..Z....", "...SSZZ...", "....L....."] },
-  { id: 13, name: "復旧現場 13", targetLines: 47, fallStepMs: 15, turnGapMs: 220, mistakeSeverity: 1, initialRows: ["JJ..OO..LL", ".J..OO...L", ".J.TTT.L..", "...T.SS...", "ZZ..SS..ZZ", ".ZZ..I.ZZ.", "....III...", ".....I....", "..L...S...", "...LLSS...", "....L....."] },
-  { id: 14, name: "復旧現場 14", targetLines: 50, fallStepMs: 14, turnGapMs: 200, mistakeSeverity: 1, initialRows: ["LL..OO..JJ", ".L..OO...J", "SS..TT..ZZ", ".SS.T...ZZ", "..L..I....", "....II....", ".....I....", "...Z..S...", "..ZZ.SS...", "....L.S...", "...LL....."] },
-  { id: 15, name: "復旧現場 15", targetLines: 54, fallStepMs: 13, turnGapMs: 180, mistakeSeverity: 1, initialRows: ["ZZ..OO..SS", ".ZZ.OO.SS.", "LL..TT..JJ", ".L.TTT...J", "..L...I...", "....III...", ".....I....", "..S..Z....", "...SSZZ...", "..L...J...", ".LL...JJ..", "..L...J..."] },
+  { id: 1, name: "復旧研修 01", targetLines: 16, fallStepMs: 47, turnGapMs: 760, mistakeSeverity: 0.88, initialRows: ["SS..OO..ZZ", ".SS..O..ZZ", "LL..TT..JJ", ".L...T...J", "..L......."] },
+  { id: 2, name: "復旧現場 02", targetLines: 18, fallStepMs: 39, turnGapMs: 640, mistakeSeverity: 0.94, initialRows: ["LL..OO..JJ", ".L..O...J.", "..L...TT..", "...S..T...", "....SS....", ".....Z...."] },
+  { id: 3, name: "復旧現場 03", targetLines: 21, fallStepMs: 33, turnGapMs: 540, mistakeSeverity: 0.97, initialRows: ["ZZ..OO..SS", ".ZZ.OO.SS.", "LL..T...JJ", ".L.TTT...J", "..L..I....", "....I.....", "......Z..."] },
+  { id: 4, name: "復旧現場 04", targetLines: 25, fallStepMs: 28, turnGapMs: 455, mistakeSeverity: 0.99, initialRows: ["JJ..OO..LL", ".J..OO...L", ".J.TTT.L..", "...T.SS...", "....SS....", "....Z.....", ".....ZZ..."] },
+  { id: 5, name: "復旧現場 05", targetLines: 29, fallStepMs: 24, turnGapMs: 390, mistakeSeverity: 1, initialRows: ["ZZ..OO..SS", ".ZZ.OO.SS.", "LL..TT..JJ", ".L.TTT...J", "..L...I...", "....III...", ".....I....", "......Z..."] },
+  { id: 6, name: "復旧現場 06", targetLines: 32, fallStepMs: 22, turnGapMs: 350, mistakeSeverity: 1, initialRows: ["LL..OO..JJ", ".L..OO...J", "SS..TT..ZZ", ".SS.T...ZZ", "..L..I....", "....II....", ".....I....", "...Z......"] },
+  { id: 7, name: "復旧現場 07", targetLines: 35, fallStepMs: 20, turnGapMs: 320, mistakeSeverity: 1, initialRows: ["ZZ..OO..SS", ".ZZ.OO.SS.", "LL..TT..JJ", ".L.TTT...J", "..L...I...", "....III...", ".....I....", "..S..Z....", "...SSZZ..."] },
+  { id: 8, name: "復旧現場 08", targetLines: 38, fallStepMs: 18, turnGapMs: 290, mistakeSeverity: 1, initialRows: ["JJ..OO..LL", ".J..OO...L", ".J.TTT.L..", "...T.SS...", "ZZ..SS..ZZ", ".ZZ..I.ZZ.", "....III...", ".....I....", "..L......."] },
+  { id: 9, name: "復旧現場 09", targetLines: 41, fallStepMs: 17, turnGapMs: 265, mistakeSeverity: 1, initialRows: ["LL..OO..JJ", ".L..OO...J", "SS..TT..ZZ", ".SS.T...ZZ", "..L..I....", "....II....", ".....I....", "...Z..S...", "..ZZ.SS...", "......S..."] },
+  { id: 10, name: "復旧現場 10", targetLines: 44, fallStepMs: 16, turnGapMs: 240, mistakeSeverity: 1, initialRows: ["ZZ..OO..SS", ".ZZ.OO.SS.", "LL..TT..JJ", ".L.TTT...J", "..L...I...", "....III...", ".....I....", "..S..Z....", "...SSZZ...", "....L....."] },
+  { id: 11, name: "復旧現場 11", targetLines: 47, fallStepMs: 15, turnGapMs: 220, mistakeSeverity: 1, initialRows: ["JJ..OO..LL", ".J..OO...L", ".J.TTT.L..", "...T.SS...", "ZZ..SS..ZZ", ".ZZ..I.ZZ.", "....III...", ".....I....", "..L...S...", "...LLSS...", "....L....."] },
+  { id: 12, name: "復旧現場 12", targetLines: 50, fallStepMs: 14, turnGapMs: 200, mistakeSeverity: 1, initialRows: ["LL..OO..JJ", ".L..OO...J", "SS..TT..ZZ", ".SS.T...ZZ", "..L..I....", "....II....", ".....I....", "...Z..S...", "..ZZ.SS...", "....L.S...", "...LL....."] },
+  { id: 13, name: "復旧現場 13", targetLines: 54, fallStepMs: 13, turnGapMs: 180, mistakeSeverity: 1, initialRows: ["ZZ..OO..SS", ".ZZ.OO.SS.", "LL..TT..JJ", ".L.TTT...J", "..L...I...", "....III...", ".....I....", "..S..Z....", "...SSZZ...", "..L...J...", ".LL...JJ..", "..L...J..."] },
+  { id: 14, name: "復旧現場 14", targetLines: 58, fallStepMs: 12, turnGapMs: 155, mistakeSeverity: 1, initialRows: ["JJ..OO..LL", ".J..OO...L", ".J.TTT.L..", "...T.SS...", "ZZ..SS..ZZ", ".ZZ..I.ZZ.", "....III...", ".....I....", "..L...S...", "...LLSS...", "....L..Z..", "...JJ.ZZ..", "....J..Z.."] },
+  { id: 15, name: "復旧現場 15", targetLines: 62, fallStepMs: 11, turnGapMs: 135, mistakeSeverity: 1, initialRows: ["ZZ..OO..SS", ".ZZ.OO.SS.", "LL..TT..JJ", ".L.TTT...J", "..L...I...", "....III...", ".....I....", "..S..Z....", "...SSZZ...", "..L...J...", ".LL...JJ..", "..L...J...", "...S..Z...", "..SS.ZZ..."] },
 ];
 const STAGE_STORAGE_KEY = "tetris-manager-unlocked-stage-v1";
 const SKILL_CUTIN_MS = 1000;
