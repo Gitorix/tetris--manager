@@ -1548,11 +1548,10 @@ const runSpecial = async () => {
   const useAnalysisTargets = state.analysisSpecialReady && state.analysisTargets.length > 0;
   const removals = useAnalysisTargets
     ? [...state.analysisTargets]
-    : Array.from({ length: 10 }, (_, x) => {
+    : shuffle(Array.from({ length: 10 }, (_, x) => {
       const y = cells.findIndex((row) => row[x] !== null);
       return y >= 0 ? { x, y } : null;
-    }).filter((position): position is BoardPosition => position !== null)
-      .sort((a, b) => a.x - b.x)
+    }).filter((position): position is BoardPosition => position !== null))
       .slice(0, normalSpecialRemovalLimit());
   state.specialGauge = 0;
   state.selectedSkill = null;
