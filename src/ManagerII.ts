@@ -211,6 +211,7 @@ let specialImpactTimer: number | null = null;
 let progressWatchdogTimer: number | null = null;
 let operationEffectTimer: number | null = null;
 let materialFlashTimer: number | null = null;
+let materialTransferTimer: number | null = null;
 let cinematicTimer: number | null = null;
 let aiTurnDueAt = 0;
 let dropDueAt = 0;
@@ -682,28 +683,29 @@ const initialMarkup = `
         <aside class="m2-operator-panel" aria-label="管理人チーム">
           <div class="m2-operator-copy" data-character-copy>アストン: 現場を監視中です。</div>
           <div class="m2-crew-row">
-            <article class="m2-character-card" data-character="miston" data-upgrade-character="miston">
+            <article class="m2-character-card" data-character="miston" data-upgrade-character="miston" aria-label="ミストン">
               <em class="m2-upgrade-callout" data-upgrade-callout="miston" hidden>スキルアップ可能</em>
-              <img src="${mistonUrl}" alt="ミストン" />
-              <div><b>ミストン</b><span>現場補修</span><em class="m2-miston-callout" data-miston-callout>様子見</em><small class="m2-material-stock">補修材 <i data-repair-pips></i><strong data-repair-count>×0</strong></small></div>
+              <div class="m2-character-visual"><img src="${mistonUrl}" alt="ミストン" /><small class="m2-material-stock"><span>補修材</span><i data-repair-pips></i><strong data-repair-count>×0</strong></small></div>
+              <div class="m2-character-status"><span>現場補修</span><em class="m2-miston-callout" data-miston-callout>様子見</em></div>
               <div class="m2-skill-actions">
                 <button type="button" data-skill="remove">撤去</button>
                 <button type="button" data-skill="rebuild">再施工</button>
               </div>
             </article>
-            <article class="m2-character-card" data-character="minton" data-upgrade-character="minton">
+            <article class="m2-character-card" data-character="minton" data-upgrade-character="minton" aria-label="ミントン">
               <em class="m2-upgrade-callout" data-upgrade-callout="minton" hidden>スキルアップ可能</em>
               <img src="${mintonUrl}" alt="ミントン" />
-              <div><b>ミントン</b><span>資材搬入</span><em class="m2-minton-callout" data-minton-callout>資材待機</em></div>
+              <div><span>資材搬入</span><em class="m2-minton-callout" data-minton-callout>資材待機</em></div>
               <button type="button" data-skill="delivery" data-delivery-button>資材搬入</button>
             </article>
-            <article class="m2-character-card" data-character="asuton" data-upgrade-character="asuton">
+            <article class="m2-character-card" data-character="asuton" data-upgrade-character="asuton" aria-label="アストン">
               <em class="m2-upgrade-callout" data-upgrade-callout="asuton" hidden>スキルアップ可能</em>
               <img src="${asutonUrl}" alt="アストン" />
-              <div><b>アストン</b><span>優先撤去分析</span></div>
+              <div><span>優先撤去分析</span></div>
               <button type="button" data-skill="analysis">撤去分析</button>
             </article>
           </div>
+          <div class="m2-material-transfer" data-material-transfer hidden aria-hidden="true"><i></i><i></i><i></i></div>
           <button class="m2-special-button" type="button" data-skill="special" disabled>
             <span>緊急復旧工事</span>
             <i><b data-special-gauge></b></i>
@@ -801,6 +803,7 @@ const stopGameTimers = () => {
   clearTimer(specialImpactTimer);
   clearTimer(operationEffectTimer);
   clearTimer(materialFlashTimer);
+  clearTimer(materialTransferTimer);
   clearTimer(cinematicTimer);
   if (progressWatchdogTimer !== null) window.clearInterval(progressWatchdogTimer);
   aiTurnTimer = null;
@@ -812,6 +815,7 @@ const stopGameTimers = () => {
   specialImpactTimer = null;
   operationEffectTimer = null;
   materialFlashTimer = null;
+  materialTransferTimer = null;
   cinematicTimer = null;
   progressWatchdogTimer = null;
   aiTurnDueAt = 0;
@@ -1133,6 +1137,30 @@ const flashMaterialStock = (amount: number) => {
   }, 1500);
 };
 
+const showMaterialTransfer = () => {
+  const effect = app.querySelector<HTMLElement>("[data-material-transfer]");
+  const source = app.querySelector<HTMLElement>("[data-character='minton']");
+  const target = app.querySelector<HTMLElement>(".m2-material-stock");
+  if (!effect || !source || !target) return;
+  const from = source.getBoundingClientRect();
+  const to = target.getBoundingClientRect();
+  const startX = from.left + from.width * .35;
+  const startY = from.top + from.height * .42;
+  const endX = to.left + to.width * .5;
+  const endY = to.top + to.height * .5;
+  const distance = Math.hypot(endX - startX, endY - startY);
+  const angle = Math.atan2(endY - startY, endX - startX) * 180 / Math.PI;
+  effect.style.left = `${startX}px`;
+  effect.style.top = `${startY}px`;
+  effect.style.width = `${distance}px`;
+  effect.style.setProperty("--transfer-angle", `${angle}deg`);
+  effect.hidden = false;
+  clearTimer(materialTransferTimer);
+  materialTransferTimer = window.setTimeout(() => {
+    effect.hidden = true;
+  }, 1150);
+};
+
 const addGauge = (amount: number) => {
   state.specialGauge = Math.min(MAX_SPECIAL_GAUGE, state.specialGauge + Math.max(1, Math.round(amount * SPECIAL_GAUGE_GAIN_MULTIPLIER)));
 };
@@ -1406,6 +1434,7 @@ const useSkill = async (skill: Skill) => {
     showToast(`資材搬入完了。補修材 +${delivered}（次の搬入まで3手）`, "good", 2200);
     speak("minton", "補修材、届けました！", 1800);
     showClearBurst(`資材搬入 +${delivered}`);
+    showMaterialTransfer();
     flashMaterialStock(delivered);
     feedback("medium");
     flashBoard("clear");
@@ -1573,6 +1602,7 @@ const runSpecial = async () => {
     : [{ src: cutinUrls.mistonSkill, character: "miston", label: "緊急復旧工事" }],
   useAnalysisTargets ? COMBO_CUTIN_MS : SKILL_CUTIN_MS);
   if (!state.playing || state.gameOver || state.cleared) return;
+  showOperationEffect("special", useAnalysisTargets ? "分析連携・緊急復旧" : "緊急復旧工事", 2150);
   const removed = removals
     .filter((position) => engine.removeSurfaceBlock(position));
   const patched = useAnalysisTargets
