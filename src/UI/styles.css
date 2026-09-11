@@ -557,6 +557,7 @@ button:focus-visible { outline: 3px solid #7ef4ff; outline-offset: 3px; }
   .m2-operator-copy { min-height: 0; padding: .2rem .4rem; overflow: hidden; font-size: .58rem; white-space: nowrap; text-overflow: ellipsis; }
   .m2-crew-row { min-height: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .25rem; }
   .m2-character-card { min-height: 0; height: 100%; grid-template-columns: 1fr; grid-template-rows: 28px minmax(0, 1fr) 40px; justify-items: center; gap: .08rem; padding: .2rem; overflow: hidden; border-width: 1px; text-align: center; }
+  .m2-character-card[data-character="miston"] { z-index: 4; overflow: visible; }
   .m2-character-card img { width: 32px; height: 28px; }
   .m2-character-card > img, .m2-character-card > .m2-character-visual { grid-row: 1; align-self: center; }
   .m2-character-card > button, .m2-character-card > .m2-skill-actions { grid-row: 3; align-self: end; }
@@ -568,6 +569,7 @@ button:focus-visible { outline: 3px solid #7ef4ff; outline-offset: 3px; }
   .m2-material-stock { margin: 0; gap: .08rem .16rem; font-size: .48rem !important; line-height: 1; }
   .m2-material-stock > span { display: block; font-size: .48rem; }
   .m2-material-stock > i i { width: 6px; height: 6px; }
+  .m2-material-stock[data-flash="true"]::after { top: -.85rem; right: -.35rem; z-index: 6; }
   .m2-character-card button { min-width: 0; width: 100%; min-height: 38px; padding: .35rem .12rem; border: 2px solid #68eaff; border-radius: .55rem; background: linear-gradient(180deg, #147c99 0%, #0b526d 52%, #073246 100%); color: #fff; box-shadow: inset 0 2px rgba(226, 253, 255, .38), inset 0 -2px rgba(0, 15, 27, .48), 0 3px 0 #021923, 0 0 14px rgba(77, 223, 246, .38); font-size: .65rem; text-shadow: 0 1px 2px #00131c; }
   .m2-character-card button:not(:disabled):active { transform: translateY(2px); box-shadow: inset 0 1px rgba(255,255,255,.12), 0 1px 0 rgba(0,0,0,.3); }
   .m2-character-card button:disabled { opacity: .62; border-color: #4e8797; background: linear-gradient(180deg, #173f4c, #0b2632); box-shadow: inset 0 1px rgba(215, 250, 255, .16), 0 2px 0 #020e14; color: #a9c6ce; }
