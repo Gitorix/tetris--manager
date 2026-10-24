@@ -36,5 +36,7 @@ revoke it at the issuing service first; deleting source alone is insufficient.
 Use GitHub noreply addresses for new commits and install the repository hooks with
 `npm run security:install-hooks`. Existing commit author/committer email metadata
 requires a coordinated history rewrite; changing `user.email` does not remove it.
+The 2026-10-25 approved rewrite removed the known personal email from all seven
+branches. History scans now also reject private commit email metadata.
 Forks, prior clones and cached commit URLs can preserve old data after a rewrite.
-See the dated audit for the known outstanding history issue.
+See the dated audit for the completed rewrite and remaining cache limitations.

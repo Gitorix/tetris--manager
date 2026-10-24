@@ -20,7 +20,7 @@ const secretPatterns = [
   ["Credential assignment", /\b(?:api[_-]?key|api[_-]?secret|access[_-]?token|auth[_-]?token|client[_-]?secret|password)\s*[=:]\s*["'][A-Za-z0-9_+\/.=-]{16,}["']/gi],
 ];
 const emailPattern = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
-const allowedEmail = (email) => /@(?:users\.noreply\.github\.com|noreply\.github\.com|example\.(?:com|org|net))$/i.test(email);
+const allowedEmail = (email) => email === "noreply@github.com" || /@(?:users\.noreply\.github\.com|noreply\.github\.com|example\.(?:com|org|net))$/i.test(email);
 const findings = new Set();
 let scanned = 0;
 const check = (file, buffer, location = file) => {
@@ -51,6 +51,14 @@ if (dist) {
   };
   walk("dist");
 } else if (history) {
+  // Commit metadata is public too, even when no file contains an email.
+  const commits = git("log", "--all", "--format=%H%x09%ae%x09%ce").toString("utf8").trim().split("\n");
+  for (const row of commits) {
+    const [hash, ...emails] = row.split("\t");
+    if (emails.some((email) => !/@users\.noreply\.github\.com$/i.test(email) && email !== "noreply@github.com")) {
+      findings.add(`${hash.slice(0, 12)}: personal email in commit metadata; use GitHub noreply`);
+    }
+  }
   const rows = git("rev-list", "--objects", "--all").toString("utf8").trim().split("\n");
   for (const row of rows) {
     const split = row.indexOf(" ");

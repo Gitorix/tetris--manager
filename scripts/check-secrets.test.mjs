@@ -19,7 +19,7 @@ function fixture(run) {
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 }
 test("safe source, GitHub noreply and example documentation pass", () => fixture(({ cwd, scan }) => {
-  writeFileSync(join(cwd, "safe.txt"), "fixture@users.noreply.github.com\nfixture@example.com");
+  writeFileSync(join(cwd, "safe.txt"), ["fixture@users.noreply.github.com", "fixture@example.com", "noreply@github.com"].join("\n"));
   assert.equal(scan().status, 0);
 }));
 test("untracked key and private email fail without echoing values", () => fixture(({ cwd, scan }) => {
@@ -57,4 +57,15 @@ test("credential-bearing filenames and published artifact keys fail", () => fixt
   execFileSync(process.execPath, ["-e", "require('fs').mkdirSync('dist')"], { cwd });
   writeFileSync(join(cwd, "dist", "bundle.js"), fakeKey);
   assert.equal(scan("--dist").status, 1);
+}));
+
+test("private email in old commit metadata fails even with safe source", () => fixture(({ cwd, git, scan }) => {
+  git("config", "user.email", privateEmail);
+  writeFileSync(join(cwd, "safe.txt"), "safe source");
+  git("add", "."); git("commit", "-qm", "fixture");
+  git("config", "user.email", "fixture@users.noreply.github.com");
+  const result = scan("--history");
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /commit metadata/);
+  assert.ok(!result.stderr.includes(privateEmail));
 }));
