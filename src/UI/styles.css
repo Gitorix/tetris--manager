@@ -264,18 +264,20 @@ button:focus-visible { outline: 3px solid #7ef4ff; outline-offset: 3px; }
 .m2-side-readout b { font-size: clamp(1.25rem, 2.2vw, 1.65rem); }
 .m2-side-readout i { color: #a7ffd3; font-style: normal; font-weight: 800; font-size: .78rem; }
 
-.m2-board-frame { position: relative; justify-self: center; width: min(100%, 360px); height: auto; min-height: 0; aspect-ratio: 1 / 2; overflow: hidden; border: 3px solid #b8d3e0; border-radius: .65rem; background: #030912; box-shadow: 0 0 0 4px rgba(40, 195, 221, .12), 0 0 36px rgba(60, 239, 255, .18); }
+.m2-board-frame { --board-depth: 0 0 0 4px rgba(40, 195, 221, .14), 0 6px 0 4px #0a2434, 0 12px 0 4px #04121d, 0 22px 34px rgba(0, 0, 0, .65); position: relative; justify-self: center; width: min(100%, 360px); height: auto; min-height: 0; aspect-ratio: 1 / 2; overflow: hidden; border: 3px solid #b8d3e0; border-radius: .65rem; background: radial-gradient(ellipse at 50% 0%, #0b2032, #030912 62%); box-shadow: var(--board-depth), 0 0 36px rgba(60, 239, 255, .18); }
 .m2-board-frame[data-danger="caution"] { border-color: #d9e77a; }
-.m2-board-frame[data-danger="danger"] { border-color: #ffd15c; box-shadow: 0 0 35px rgba(255, 198, 83, .3); }
-.m2-board-frame[data-danger="emergency"], .m2-board-frame[data-danger="collapse"] { border-color: #ff7e8e; box-shadow: 0 0 40px rgba(255, 66, 97, .38); }
+.m2-board-frame[data-danger="danger"] { border-color: #ffd15c; box-shadow: var(--board-depth), 0 0 35px rgba(255, 198, 83, .3); }
+.m2-board-frame[data-danger="emergency"], .m2-board-frame[data-danger="collapse"] { border-color: #ff7e8e; box-shadow: var(--board-depth), 0 0 40px rgba(255, 66, 97, .38); }
 .m2-board-frame[data-flash="clear"] { animation: board-clear .48s ease-out; }
 .m2-board-frame[data-flash="danger"] { animation: board-danger .48s ease-out; }
 .m2-board-frame[data-flash="special"] { animation: board-special .7s ease-out; }
-@keyframes board-clear { 50% { box-shadow: 0 0 44px 15px rgba(119, 255, 202, .58); } }
-@keyframes board-danger { 50% { box-shadow: 0 0 30px 12px rgba(255, 78, 90, .54); } }
+@keyframes board-clear { 35% { transform: perspective(900px) translateZ(14px); } 50% { box-shadow: var(--board-depth), 0 0 44px 15px rgba(119, 255, 202, .58); } }
+@keyframes board-danger { 50% { box-shadow: var(--board-depth), 0 0 30px 12px rgba(255, 78, 90, .54); } }
 @keyframes board-special { 50% { filter: brightness(1.55); transform: scale(1.01); } }
-.m2-board-grid { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(20, 1fr); }
-.m2-board-cell { position: relative; min-width: 0; min-height: 0; overflow: hidden; padding: 0; border: 1px solid rgba(36, 92, 111, .62); background: rgba(1, 7, 17, .86); cursor: default; }
+.m2-board-grid { --bevel: 3px; position: absolute; inset: 0; display: grid; grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(20, 1fr); }
+/* Inner shadow makes the grid read as a recessed well inside the frame. */
+.m2-board-grid::after { content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none; box-shadow: inset 0 14px 18px -8px rgba(0, 0, 0, .7), inset 0 -10px 16px -10px rgba(79, 234, 255, .22), inset 10px 0 14px -12px rgba(0, 0, 0, .7), inset -10px 0 14px -12px rgba(0, 0, 0, .7); }
+.m2-board-cell { position: relative; min-width: 0; min-height: 0; overflow: hidden; padding: 0; border: 1px solid rgba(36, 92, 111, .5); background: linear-gradient(160deg, rgba(10, 30, 46, .82), rgba(1, 7, 17, .9)); box-shadow: inset 0 1px 0 rgba(140, 230, 255, .05), inset 0 -1px 0 rgba(0, 0, 0, .45); cursor: default; }
 .m2-board-frame[data-interaction="remove"] .m2-board-cell[data-surface="true"] { z-index: 2; cursor: crosshair; }
 .m2-board-frame[data-interaction="rebuild"] .m2-board-cell[data-rebuildable="true"] { z-index: 2; overflow: visible; cursor: crosshair; }
 .m2-board-cell[data-hole="true"] { outline: 2px solid #ff6678; outline-offset: -2px; background: rgba(255, 50, 78, .2); }
@@ -283,16 +285,38 @@ button:focus-visible { outline: 3px solid #7ef4ff; outline-offset: 3px; }
 .m2-board-cell[data-effect="true"] { animation: skill-target .65s ease-out both; }
 .m2-board-cell[data-special-effect="remove"] { outline: 2px solid #ff9aa7; outline-offset: -2px; background: rgba(255, 71, 95, .5); box-shadow: inset 0 0 0 2px #ffd5da, 0 0 18px rgba(255, 89, 111, .85); animation: special-remove 1.15s ease-out both; }
 .m2-board-cell[data-special-effect="patch"] { outline: 2px solid #aaffd5; outline-offset: -2px; box-shadow: inset 0 0 0 2px #effff7, 0 0 18px rgba(88, 255, 189, .9); animation: special-patch 1.15s ease-out both; }
-.m2-board-cell[data-block="I"] { background: #38dff3; box-shadow: inset 0 0 0 2px #a2fbff, 0 0 12px #22cbdc; }
-.m2-board-cell[data-block="O"] { background: #ffd236; box-shadow: inset 0 0 0 2px #fff4a2, 0 0 12px #eeb414; }
-.m2-board-cell[data-block="T"] { background: #c58bf6; box-shadow: inset 0 0 0 2px #efd9ff, 0 0 12px #a76ce3; }
-.m2-board-cell[data-block="L"] { background: #ffac64; box-shadow: inset 0 0 0 2px #ffd4aa, 0 0 12px #f1883e; }
-.m2-board-cell[data-block="J"] { background: #79adff; box-shadow: inset 0 0 0 2px #c3ddff, 0 0 12px #4c8df0; }
-.m2-board-cell[data-block="S"] { background: #69e99b; box-shadow: inset 0 0 0 2px #c0ffdc, 0 0 12px #37c879; }
-.m2-board-cell[data-block="Z"] { background: #fa839a; box-shadow: inset 0 0 0 2px #ffc0ca, 0 0 12px #dc5471; }
-.m2-board-cell[data-block="PATCH"] { background: repeating-linear-gradient(45deg, #d9fff0 0 3px, #76d9bb 3px 6px); box-shadow: inset 0 0 0 2px #effff8; }
-.m2-board-cell[data-block="REPAIR"] { background: repeating-linear-gradient(135deg, #d9f4ff 0 3px, #5fbeff 3px 6px); box-shadow: inset 0 0 0 2px #f0fbff, 0 0 12px #58cfff; }
-.m2-board-cell[data-active="true"] { animation: active-piece .42s ease-in-out infinite alternate; }
+.m2-board-cell[data-block="I"] { --block: #38dff3; --block-hi: #c4fdff; --block-lo: #0e8ea3; }
+.m2-board-cell[data-block="O"] { --block: #ffd236; --block-hi: #fff6b8; --block-lo: #c08a00; }
+.m2-board-cell[data-block="T"] { --block: #c58bf6; --block-hi: #f2e2ff; --block-lo: #7d43b8; }
+.m2-board-cell[data-block="L"] { --block: #ffac64; --block-hi: #ffe0c2; --block-lo: #c35f1c; }
+.m2-board-cell[data-block="J"] { --block: #79adff; --block-hi: #d6e7ff; --block-lo: #2e64c4; }
+.m2-board-cell[data-block="S"] { --block: #69e99b; --block-hi: #d2ffe5; --block-lo: #1f9a55; }
+.m2-board-cell[data-block="Z"] { --block: #fa839a; --block-hi: #ffd3db; --block-lo: #b9334f; }
+/* Bevelled, lit-from-top-left blocks so every piece reads as a solid 3D tile. */
+.m2-board-cell:is([data-block="I"], [data-block="O"], [data-block="T"], [data-block="L"], [data-block="J"], [data-block="S"], [data-block="Z"]) {
+  border-color: rgba(0, 8, 18, .55);
+  border-radius: 3px;
+  background: linear-gradient(145deg, var(--block-hi) 0%, var(--block) 34%, var(--block) 64%, var(--block-lo) 100%);
+  box-shadow:
+    inset var(--bevel) var(--bevel) 0 rgba(255, 255, 255, .42),
+    inset calc(var(--bevel) * -1) calc(var(--bevel) * -1) 0 rgba(0, 10, 25, .34),
+    inset 0 0 0 1px rgba(255, 255, 255, .28),
+    0 0 10px color-mix(in srgb, var(--block) 55%, transparent);
+}
+.m2-board-cell:is([data-block="I"], [data-block="O"], [data-block="T"], [data-block="L"], [data-block="J"], [data-block="S"], [data-block="Z"])::before {
+  content: "";
+  position: absolute;
+  top: 13%;
+  left: 15%;
+  width: 40%;
+  height: 22%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .78), rgba(255, 255, 255, 0));
+  pointer-events: none;
+}
+.m2-board-cell[data-block="PATCH"] { border-radius: 3px; background: repeating-linear-gradient(45deg, #d9fff0 0 3px, #76d9bb 3px 6px); box-shadow: inset var(--bevel) var(--bevel) 0 rgba(255, 255, 255, .5), inset calc(var(--bevel) * -1) calc(var(--bevel) * -1) 0 rgba(0, 40, 30, .3), inset 0 0 0 1px #effff8; }
+.m2-board-cell[data-block="REPAIR"] { border-radius: 3px; background: repeating-linear-gradient(135deg, #d9f4ff 0 3px, #5fbeff 3px 6px); box-shadow: inset var(--bevel) var(--bevel) 0 rgba(255, 255, 255, .5), inset calc(var(--bevel) * -1) calc(var(--bevel) * -1) 0 rgba(0, 30, 60, .32), inset 0 0 0 1px #f0fbff, 0 0 12px #58cfff; }
+.m2-board-cell[data-active="true"] { z-index: 1; animation: active-piece .42s ease-in-out infinite alternate; }
 .m2-board-frame[data-interaction="remove"] .m2-board-cell[data-surface="true"] { animation: remove-absorb 1.45s ease-in-out infinite; }
 .m2-board-frame[data-interaction="remove"] .m2-board-cell[data-surface="true"]::after { content: ""; position: absolute; inset: -42%; border-radius: 50%; background: radial-gradient(circle, rgba(1, 6, 15, .92) 0 8%, rgba(79, 234, 255, .55) 10%, rgba(79, 234, 255, 0) 37%); pointer-events: none; animation: remove-vortex 1.45s ease-in-out infinite; }
 .m2-board-frame[data-interaction="rebuild"] .m2-board-cell[data-rebuildable="true"] { animation: rebuild-ready 1.2s ease-out infinite; }
@@ -664,4 +688,166 @@ button:focus-visible { outline: 3px solid #7ef4ff; outline-offset: 3px; }
   .m2-board-frame { width: min(100%, 285px); height: auto; min-height: 0; }
   .m2-character-card { min-height: 72px; }
   .m2-character-card img { height: 55px; }
+}
+
+/*
+ * Visual refresh: depth effects, larger board, and an easier-to-follow tutorial
+ * video. Kept at the end so it can resize the board after the layout rules above.
+ */
+.m2-game-screen, .m2-title-screen { isolation: isolate; }
+/* Perspective floor grid that recedes behind the play area. */
+.m2-game-screen::before, .m2-title-screen::before {
+  content: "";
+  position: absolute;
+  left: -40%;
+  right: -40%;
+  bottom: 0;
+  z-index: -1;
+  height: 48%;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(76, 228, 255, .32) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(76, 228, 255, .26) 2px, transparent 2px);
+  background-size: 64px 64px;
+  transform: perspective(420px) rotateX(64deg);
+  transform-origin: 50% 100%;
+  -webkit-mask-image: linear-gradient(to top, #000 10%, transparent 92%);
+  mask-image: linear-gradient(to top, #000 10%, transparent 92%);
+  animation: m2-floor-scroll 6s linear infinite;
+}
+.m2-game-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse 60% 45% at 50% 42%, rgba(48, 196, 235, .16), transparent 70%);
+}
+@keyframes m2-floor-scroll { to { background-position: 0 64px, 0 0; } }
+
+/* Extruded title lettering and floating crew. */
+.m2-title-tetris { text-shadow: 1px 1px 0 #2bb8dc, 2px 2px 0 #1fa2c6, 3px 3px 0 #178bb0, 4px 4px 0 #11769a, 5px 5px 0 #0c6284, 6px 7px 0 #074b67, 10px 14px 18px rgba(0, 0, 0, .6), 0 0 28px rgba(84, 229, 255, .7); }
+.m2-title-name { text-shadow: 1px 1px 0 #b9d4e2, 2px 2px 0 #8fb0c3, 3px 3px 0 #6c8ea3, 4px 5px 0 #4a6b80, 8px 12px 16px rgba(0, 0, 0, .55); }
+.m2-title-crew img { animation: m2-float 3.6s ease-in-out infinite; filter: drop-shadow(0 14px 10px rgba(0, 0, 0, .55)) drop-shadow(0 0 14px rgba(84, 229, 255, .25)); }
+.m2-title-crew figure:nth-child(2) img { animation-delay: -1.2s; }
+.m2-title-crew figure:nth-child(3) img { animation-delay: -2.4s; }
+@keyframes m2-float { 50% { transform: translateY(-8px); } }
+
+/* Buttons and cards get a physical bottom edge that compresses on press. */
+.m2-primary-button { box-shadow: inset 0 2px rgba(214, 251, 255, .35), 0 5px 0 #06384a, 0 10px 22px rgba(0, 0, 0, .45), 0 0 18px rgba(41, 211, 240, .2); transition: transform .12s ease, box-shadow .12s ease; }
+.m2-primary-button:hover { box-shadow: inset 0 2px rgba(214, 251, 255, .4), 0 7px 0 #06384a, 0 14px 26px rgba(0, 0, 0, .45), 0 0 25px rgba(77, 235, 255, .45); }
+.m2-primary-button:active { transform: translateY(4px); box-shadow: inset 0 2px rgba(214, 251, 255, .25), 0 1px 0 #06384a, 0 4px 10px rgba(0, 0, 0, .45); }
+.m2-stage-card { transition: transform .18s ease, box-shadow .18s ease; }
+.m2-stage-card:not(:disabled):hover { transform: perspective(700px) rotateX(5deg) translateY(-3px); box-shadow: 0 10px 0 -2px #052436, 0 18px 26px rgba(0, 0, 0, .5), 0 0 25px rgba(77, 235, 255, .4); }
+.m2-side-readout > div, .m2-character-card, .m2-operator-copy { box-shadow: inset 0 1px 0 rgba(160, 240, 255, .14), 0 4px 0 rgba(1, 12, 22, .9), 0 10px 18px rgba(0, 0, 0, .35); }
+
+/* Desktop: the board takes as much height as the window allows. */
+@media (min-width: 821px) {
+  .m2-play-layout { grid-template-columns: minmax(150px, .55fr) minmax(300px, 500px) minmax(230px, .82fr); }
+  .m2-board-frame { width: min(100%, 500px, max(260px, calc((100dvh - 128px) / 2))); height: auto; }
+  .m2-board-grid { --bevel: 4px; }
+  .m2-play-layout > .m2-board-frame { margin-bottom: 12px; }
+}
+
+/*
+ * Phones and tablets: the three status readouts share the top row with the
+ * pause / exit buttons, giving the board the height the header used.
+ */
+@media (max-width: 820px) {
+  .m2-game-screen { grid-template-columns: 40px minmax(0, 1fr) 40px; grid-template-rows: 46px minmax(0, 1fr) 150px; gap: .3rem; }
+  .m2-game-header, .m2-play-layout { display: contents; }
+  .m2-header-summary { display: none; }
+  .m2-header-button { grid-row: 1; width: 40px; height: 46px; }
+  .m2-header-button[data-action="pause-game"] { grid-column: 1; }
+  .m2-header-button[data-action="exit-game"] { grid-column: 3; font-size: .58rem; }
+  .m2-side-readout { grid-row: 1; grid-column: 2; min-width: 0; gap: .25rem; }
+  .m2-side-readout > div { min-height: 0; height: 46px; }
+  .m2-board-frame { --board-depth: 0 0 0 3px rgba(40, 195, 221, .14), 0 4px 0 3px #0a2434, 0 7px 0 3px #04121d, 0 12px 18px rgba(0, 0, 0, .6); grid-row: 2; grid-column: 1 / -1; width: auto; height: calc(100% - 8px); max-width: 100%; max-height: none; margin-bottom: 8px; }
+  .m2-operator-panel { grid-row: 3; grid-column: 1 / -1; width: 100%; max-width: 560px; justify-self: center; grid-template-rows: 22px minmax(0, 1fr) 44px; }
+  .m2-character-card { grid-template-rows: 26px minmax(0, 1fr) 42px; }
+  .m2-character-card button { min-height: 42px; }
+  .m2-special-button { min-height: 44px; }
+}
+@media (max-width: 820px) and (min-width: 600px) {
+  .m2-side-readout { width: 100%; max-width: 560px; justify-self: center; }
+  .m2-side-readout span, .m2-side-readout i { font-size: .68rem; }
+  .m2-side-readout b { font-size: 1.05rem; }
+  .m2-board-grid { --bevel: 4px; }
+}
+@media (max-width: 820px) and (max-height: 650px) {
+  .m2-game-screen { grid-template-rows: 42px minmax(0, 1fr) 140px; }
+  .m2-header-button { height: 42px; }
+  .m2-side-readout > div { height: 42px; }
+  .m2-operator-panel { grid-template-rows: 0 minmax(0, 1fr) 40px; }
+  .m2-character-card { grid-template-rows: 24px minmax(0, 1fr) 38px; }
+  .m2-character-card button { min-height: 38px; }
+  .m2-special-button { min-height: 40px; }
+}
+@media (max-width: 380px) {
+  .m2-game-screen { grid-template-columns: 34px minmax(0, 1fr) 34px; gap: .25rem; padding-inline: .4rem; }
+  .m2-header-button { width: 34px; font-size: .62rem; }
+  .m2-header-button[data-action="exit-game"] { font-size: .5rem; }
+  .m2-side-readout { gap: .2rem; }
+  .m2-side-readout > div { padding-inline: .15rem; }
+  .m2-board-grid { --bevel: 2px; }
+}
+
+/* Tutorial video: bigger player, large captions, slow playback and chapters. */
+.m2-rulebook-video-panel { grid-template-columns: minmax(0, .8fr) minmax(300px, 460px); }
+.m2-rulebook-video-stage { display: grid; gap: .6rem; width: min(100%, 460px); margin-inline: auto; }
+.m2-rulebook-video-shell { width: 100%; box-shadow: 0 0 0 4px rgba(40, 195, 221, .12), 0 8px 0 2px #072131, 0 18px 30px rgba(0, 0, 0, .55), 0 0 26px rgba(67, 224, 255, .22); }
+/* Leave room for the caption box and controls so the whole player fits on screen. */
+.m2-rulebook-video { max-height: max(360px, calc(100dvh - 230px)); }
+.m2-video-caption {
+  display: grid;
+  place-items: center;
+  min-height: 4.4em;
+  margin: 0;
+  padding: .55rem .8rem;
+  border: 2px solid rgba(255, 224, 70, .75);
+  border-radius: .7rem;
+  background: rgba(1, 8, 18, .94);
+  color: #fff;
+  font-size: clamp(1.05rem, 4.6vw, 1.32rem);
+  font-weight: 900;
+  line-height: 1.45;
+  text-align: center;
+  text-wrap: balance;
+  word-break: auto-phrase;
+  text-shadow: 0 2px 2px #000;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .45);
+}
+.m2-video-caption[data-empty="true"]::before { content: "▶ 再生すると、ここにナレーションの字幕が出ます"; color: #8fb2c2; font-size: .78em; font-weight: 750; }
+.m2-video-tools { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; }
+.m2-video-tools > div { display: flex; gap: .35rem; }
+.m2-video-tools button, .m2-video-chapters button {
+  min-height: 44px;
+  padding: .5rem .85rem;
+  border: 1px solid #3dd7ed;
+  border-radius: .6rem;
+  background: linear-gradient(180deg, rgba(19, 92, 122, .95), rgba(4, 23, 43, .96));
+  color: #f4fcff;
+  font-size: .9rem;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: inset 0 1px rgba(214, 251, 255, .3), 0 3px 0 #052436;
+}
+.m2-video-tools button:active, .m2-video-chapters button:active { transform: translateY(2px); box-shadow: inset 0 1px rgba(214, 251, 255, .2), 0 1px 0 #052436; }
+.m2-video-tools button[aria-pressed="true"] { border-color: #ffe046; background: linear-gradient(180deg, #8a6b0e, #4a3606); color: #fff7cf; }
+.m2-video-chapters { display: grid; gap: .45rem; margin-top: 1rem; }
+.m2-video-chapters > span { color: #55eaff; font-size: .78rem; font-weight: 900; letter-spacing: .08em; }
+.m2-video-chapters > div { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: .4rem; }
+.m2-video-chapters button { display: flex; align-items: center; gap: .45rem; text-align: left; font-size: .86rem; }
+.m2-video-chapters b { display: grid; place-items: center; flex: 0 0 auto; width: 1.6rem; height: 1.6rem; border-radius: 50%; background: #67eaff; color: #03202b; font-size: .8rem; }
+.m2-rulebook-video::cue { background: rgba(0, 0, 0, .82); color: #fff; font-size: 1.15em; font-weight: 800; }
+@media (max-width: 820px) {
+  .m2-rulebook-video-panel { grid-template-columns: 1fr; }
+  .m2-rulebook-video-copy { order: 2; }
+  .m2-rulebook-video { max-height: 62dvh; }
+  .m2-video-chapters > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m2-game-screen::before, .m2-title-screen::before, .m2-title-crew img { animation: none; }
+  .m2-stage-card:not(:disabled):hover { transform: none; }
 }

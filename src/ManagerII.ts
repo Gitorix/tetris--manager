@@ -11,7 +11,18 @@ import mistonUrl from "../miston.png";
 const rulebookGameplayUrl = `${import.meta.env.BASE_URL}rulebook/gameplay-live.png`;
 const rulebookAnalysisUrl = `${import.meta.env.BASE_URL}rulebook/priority-analysis.png`;
 const skillUpBlockUrl = `${import.meta.env.BASE_URL}skill-up-block-simple.png`;
-const tutorialVideoUrl = `${import.meta.env.BASE_URL}tutorial/tetris-manager-mobile-tutorial.mp4?v=20260825-sku2`;
+const tutorialVideoUrl = `${import.meta.env.BASE_URL}tutorial/tetris-manager-mobile-tutorial.mp4?v=20261024-clear`;
+const tutorialCaptionsUrl = `${import.meta.env.BASE_URL}tutorial/tetris-manager-mobile-tutorial.ja.vtt?v=20261024`;
+// Chapter start times match the scene boundaries of tutorial/build_mobile_tutorial.py.
+const TUTORIAL_CHAPTERS = [
+  { time: 0, label: "ルール" },
+  { time: 27, label: "撤去・再施工" },
+  { time: 64.8, label: "資材搬入" },
+  { time: 73.8, label: "監視・分析" },
+  { time: 92, label: "緊急復旧工事" },
+  { time: 107.2, label: "SKU強化" },
+] as const;
+const TUTORIAL_RATES = [{ rate: 0.85, label: "ゆっくり" }, { rate: 1, label: "標準" }] as const;
 const cutinUrls = {
   asutonSkill: `${import.meta.env.BASE_URL}cutins/asuton-skill.png`,
   mintonSkill: `${import.meta.env.BASE_URL}cutins/minton-skill.png`,
@@ -404,11 +415,17 @@ const initialMarkup = `
             <span class="m2-kicker">VIDEO TUTORIAL</span>
             <h3 id="rulebook-video-title">撤去から緊急復旧工事まで、実際の画面で解説</h3>
             <p>基本ルール、3人のスキル、必殺技の使い分けを順番に確認できます。</p>
-            <ul><li>操作するボタンを拡大表示</li><li>ナレーションとテキスト付き</li><li>再生できない時は文章版に切替可能</li></ul>
+            <ul><li>操作するボタンを拡大表示</li><li>ナレーションを大きな字幕で表示</li><li>「ゆっくり」再生と見たい場面へのジャンプに対応</li></ul>
+            <nav class="m2-video-chapters" aria-label="動画のチャプター">
+              <span>見たい場面へ</span>
+              <div>${TUTORIAL_CHAPTERS.map((chapter, index) => `<button type="button" data-video-chapter="${chapter.time}"><b>${index + 1}</b>${chapter.label}</button>`).join("")}</div>
+            </nav>
           </div>
+          <div class="m2-rulebook-video-stage">
           <div class="m2-rulebook-video-shell">
             <video class="m2-rulebook-video" controls playsinline preload="metadata" poster="${rulebookGameplayUrl}" data-rulebook-video>
               <source src="${tutorialVideoUrl}" type="video/mp4" />
+              <track kind="captions" srclang="ja" label="日本語字幕" src="${tutorialCaptionsUrl}" default />
               このブラウザでは動画を再生できません。
             </video>
             <div class="m2-rulebook-video-fallback" data-video-fallback hidden>
@@ -416,6 +433,14 @@ const initialMarkup = `
               <p>文章版のルールブックはそのまま利用できます。</p>
               <button type="button" data-action="show-rulebook-text">文章版を開く</button>
             </div>
+          </div>
+          <p class="m2-video-caption" data-video-caption data-empty="true" aria-hidden="true"></p>
+          <div class="m2-video-tools">
+            <button type="button" data-action="toggle-captions" aria-pressed="true">字幕 ON</button>
+            <div role="group" aria-label="再生速度">
+              ${TUTORIAL_RATES.map(({ rate, label }) => `<button type="button" data-video-rate="${rate}" aria-pressed="${rate === 1}">${label}</button>`).join("")}
+            </div>
+          </div>
           </div>
         </section>
 
@@ -1699,6 +1724,84 @@ const closeSettings = () => {
   render();
 };
 
+let tutorialCaptionsOn = true;
+let tutorialRate = 1;
+const tutorialVideo = () => app.querySelector<HTMLVideoElement>("[data-rulebook-video]");
+
+// Captions are drawn in a large box under the video. The native track is only
+// shown in fullscreen, where that box is not visible.
+const syncTutorialCaptionTrack = () => {
+  const video = tutorialVideo();
+  const track = video?.textTracks[0];
+  if (!video || !track) return;
+  const fullscreen = document.fullscreenElement === video || Boolean((video as HTMLVideoElement & { webkitDisplayingFullscreen?: boolean }).webkitDisplayingFullscreen);
+  track.mode = tutorialCaptionsOn && fullscreen ? "showing" : "hidden";
+};
+
+const renderTutorialCaption = () => {
+  const box = app.querySelector<HTMLElement>("[data-video-caption]");
+  const cue = tutorialVideo()?.textTracks[0]?.activeCues?.[0] as VTTCue | undefined;
+  if (!box) return;
+  const text = tutorialCaptionsOn ? cue?.text ?? "" : "";
+  box.textContent = text;
+  box.dataset.empty = text ? "false" : "true";
+  box.hidden = !tutorialCaptionsOn;
+};
+
+const setTutorialCaptions = (on: boolean) => {
+  tutorialCaptionsOn = on;
+  const toggle = app.querySelector<HTMLButtonElement>("[data-action='toggle-captions']");
+  if (toggle) {
+    toggle.setAttribute("aria-pressed", String(on));
+    toggle.textContent = on ? "字幕 ON" : "字幕 OFF";
+  }
+  syncTutorialCaptionTrack();
+  renderTutorialCaption();
+};
+
+const setTutorialRate = (rate: number) => {
+  tutorialRate = rate;
+  const video = tutorialVideo();
+  if (video) {
+    video.defaultPlaybackRate = rate;
+    video.playbackRate = rate;
+  }
+  app.querySelectorAll<HTMLButtonElement>("[data-video-rate]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(Number(button.dataset.videoRate) === rate));
+  });
+};
+
+const playTutorialFrom = (time: number) => {
+  const video = tutorialVideo();
+  if (!video) return;
+  video.currentTime = time;
+  void video.play().catch(() => undefined);
+};
+
+const bindTutorialVideo = () => {
+  const video = tutorialVideo();
+  if (!video) return;
+  video.addEventListener("error", () => {
+    const fallback = app.querySelector<HTMLElement>("[data-video-fallback]");
+    if (fallback) fallback.hidden = false;
+  });
+  video.addEventListener("ended", () => {
+    video.pause();
+    video.currentTime = 0;
+    video.load();
+  });
+  // load() resets the playback rate, so restore it whenever new media is ready.
+  video.addEventListener("loadedmetadata", () => {
+    setTutorialRate(tutorialRate);
+    syncTutorialCaptionTrack();
+  });
+  video.textTracks[0]?.addEventListener("cuechange", renderTutorialCaption);
+  video.addEventListener("seeked", renderTutorialCaption);
+  ["fullscreenchange", "webkitfullscreenchange"].forEach((type) => document.addEventListener(type, syncTutorialCaptionTrack));
+  ["webkitbeginfullscreen", "webkitendfullscreen"].forEach((type) => video.addEventListener(type, () => window.setTimeout(syncTutorialCaptionTrack)));
+  setTutorialCaptions(true);
+};
+
 const bindEvents = () => {
   app.addEventListener("click", (event) => {
     void audioDirector.unlock();
@@ -1719,6 +1822,11 @@ const bindEvents = () => {
     if (action === "exit-game") exitGame();
     if (action === "close-upgrade") closeUpgrade();
     if (action === "confirm-upgrade") confirmUpgrade();
+    if (action === "toggle-captions") setTutorialCaptions(!tutorialCaptionsOn);
+    const rate = target.closest<HTMLElement>("[data-video-rate]")?.dataset.videoRate;
+    if (rate) setTutorialRate(Number(rate));
+    const chapter = target.closest<HTMLElement>("[data-video-chapter]")?.dataset.videoChapter;
+    if (chapter) playTutorialFrom(Number(chapter));
     if (action === "test-sound") {
       void audioDirector.unlock().then(() => audioDirector.play("combo"));
     }
@@ -1779,16 +1887,7 @@ export const mountManagerII = () => {
   app.innerHTML = initialMarkup;
   app.addEventListener("dblclick", (event) => event.preventDefault());
   bindEvents();
-  const tutorialVideo = app.querySelector<HTMLVideoElement>("[data-rulebook-video]");
-  tutorialVideo?.addEventListener("error", () => {
-    const fallback = app.querySelector<HTMLElement>("[data-video-fallback]");
-    if (fallback) fallback.hidden = false;
-  });
-  tutorialVideo?.addEventListener("ended", () => {
-    tutorialVideo.pause();
-    tutorialVideo.currentTime = 0;
-    tutorialVideo.load();
-  });
+  bindTutorialVideo();
   setRulebookMode("video");
   setScreen("title");
   applySettings();
