@@ -6,10 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "security:secrets": "node scripts/check-secrets.mjs",
+    "security:audit": "npm audit --audit-level=high",
+    "security:check": "npm run security:secrets && npm run security:audit && npm run build"
   },
   "devDependencies": {
     "typescript": "^5.8.3",
-    "vite": "^7.0.5"
+    "vite": "^8.3.5"
   }
 }

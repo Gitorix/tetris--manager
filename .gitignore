@@ -5,10 +5,20 @@ node_modules/
 dist/
 coverage/
 
-# Local environment
-.env
-.env.local
-.env.*.local
+# Local environment and credentials
+.env*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service-account*.json
+
+# Local/generated review artifacts
+.tmp_*/
+*.inspect.ndjson
+*.pptx
 
 # Vercel
 .vercel/
