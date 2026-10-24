@@ -9,7 +9,11 @@
     "preview": "vite preview",
     "security:secrets": "node scripts/check-secrets.mjs",
     "security:audit": "npm audit --audit-level=high",
-    "security:check": "npm run security:secrets && npm run security:audit && npm run build"
+    "security:check": "npm run security:test && npm run security:secrets && npm run security:history && npm run security:audit && npm run build && npm run security:artifacts",
+    "security:history": "node scripts/check-secrets.mjs --history",
+    "security:artifacts": "node scripts/check-secrets.mjs --dist",
+    "security:test": "node --test scripts/check-secrets.test.mjs",
+    "security:install-hooks": "git config --local core.hooksPath .githooks"
   },
   "devDependencies": {
     "typescript": "^5.8.3",

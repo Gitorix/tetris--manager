@@ -1,0 +1,46 @@
+# セキュリティ確認（2026-10-25、日本時間）
+
+## 確認結果
+
+- GitHub公開リポジトリ `Gitorix/tetris--manager` と公開サイトを確認。
+- 現在の作業ファイル、取得した全ブランチから到達できる過去のファイル、公開用ビルドで、検査対象形式のAPIキー・秘密鍵・個人メールアドレスの検出なし。
+- `npm audit` の既知脆弱性は全深刻度で0件。Vite 8.3.5を使用。
+- GitHubの未解決Secret scanning / Dependabot / CodeQL警告は各0件。
+- Secret scanningとPush protectionは有効。Dependabot通知・脆弱性自動修正も有効化。
+- GitHubプロフィールAPIの公開メール欄は空。ブラウザのアカウント設定で「メール非公開」「メール露出Push拒否」がともに有効であることも確認。
+- このゲームにはメール入力・ログイン・外部API送信・利用者DBがなく、設定・進捗はブラウザに保存される。
+
+## 今回の追加対策
+
+- 作業ファイルに加えてGitの過去のファイルと公開用ビルドも継続検査。
+- 個人メール、秘密情報を含むファイル名、追加のキー形式・認証情報の直接代入を検出。検出値はログに出さない。
+- ステージ済みの内容とコミット時のnoreply設定を検査するローカルフック。
+- 漏えいの再発・過去ファイル削除による見逃しを再現する回帰テスト6件。
+- 本番HTMLのCSPを `connect-src 'none'` に制限。
+- ローカル本番ビルドのタイトル・現場選択・ゲーム開始・停止・再開を確認。ブラウザの警告・エラーなし。
+
+## 未解決: 過去のコミット作成者メール
+
+過去43件のコミットの作成者・コミッターに個人のGmailアドレスが残っている。
+アドレス自体はこの文書に記載しない。現在のGit設定はGitHub noreplyへ変更済み。
+これは利用者メールの収集やDB流出ではなく、公開Gitメタデータでの露出。
+
+既存履歴のメールを置換するには、対象ブランチの履歴書き換えとforce pushが必要。
+コミットIDが変わり、他のコピー・開いているPRとの調整が必要なので、実行前に承認する。
+過去のコピー・フォーク・GitHubのキャッシュから完全に消せるとは保証できない。
+メールアドレスが公開されていた事実だけで、メールアカウントへの不正アクセスを意味するものではない。
+
+## 確認の限界
+
+検査対象はこのリポジトリ、取得可能な履歴、公開成果物、GitHub警告。
+別リポジトリ、削除済みの到達不能オブジェクト、第三者の複製、メール事業者のログは対象外。
+パターン検査で任意の秘密情報の不存在は証明できない。
+APIキーが見つかった場合は提供元で失効・再発行する。コードから削除するだけでは不十分。
+
+## 公式情報
+
+- https://docs.github.com/en/code-security/tutorials/remediate-leaked-secrets/remediating-a-leaked-secret
+- https://docs.github.com/en/account-and-profile/concepts/email-addresses
+- https://docs.github.com/en/account-and-profile/how-tos/email-preferences/blocking-command-line-pushes-that-expose-your-personal-email-address
+- https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository
+- https://vite.dev/releases
