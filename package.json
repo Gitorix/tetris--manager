@@ -16,7 +16,7 @@
     "security:install-hooks": "git config --local core.hooksPath .githooks"
   },
   "devDependencies": {
-    "typescript": "^5.8.3",
+    "typescript": "^7.0.2",
     "vite": "^8.3.5"
   }
 }
